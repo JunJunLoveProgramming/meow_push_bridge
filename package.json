@@ -1,0 +1,84 @@
+{
+  "name": "meow-push-bridge",
+  "version": "0.1.1",
+  "description": "MeoW Push Bridge (喵桥) — 让 DSH Agent 通过 MeoW API 向鸿蒙手机推送通知的工具插件（零运行时依赖）",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "cordis-plugin",
+    "meow",
+    "harmonyos",
+    "push-notification",
+    "agent-tool"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./lib/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "lib",
+    "cordis.patch.yml",
+    "cordis.debug.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "pnpm build:node && pnpm build:client",
+    "build:node": "tsc -p tsconfig.json",
+    "build:client": "node scripts/copy-client.mjs",
+    "build:tests": "tsc -p tsconfig.tests.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "pnpm build && pnpm build:tests",
+    "test": "node scripts/run-tests.mjs",
+    "pack": "pnpm test && pnpm pack",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "autoInstallPeers": false
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JunJunLoveProgramming/meow-push-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JunJunLoveProgramming/meow-push-bridge/issues"
+  },
+  "homepage": "https://github.com/JunJunLoveProgramming/meow-push-bridge#readme",
+  "author": "骏骏爱编程 (https://github.com/JunJunLoveProgramming)",
+  "contributors": [
+    "方程 chuckfang <chuckfang@qq.com>（MeoW API 与 MeoW App 技术支持）"
+  ]
+}

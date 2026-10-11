@@ -1,0 +1,26 @@
+# meow-push-bridge / MeoW Push Bridge (喵桥) —— 发布用配置补丁
+#
+# 本文件是 DSH 的「插件配置补丁」（cordis patch）。作为 Bundle 安装后，DSH 的
+# Loader 会把它叠加到 profile 配置层上，插入本插件并注入 config。
+#
+# ⚠️ name 必须是包名（解析到 package.json 的 main → ./dist/index.js）。
+#    源码调试请改用同目录的 cordis.debug.patch.yml（那里 name 为 ./src/index.ts）。
+#    原因：npm 包的 files 白名单只含 dist/，装到 profile 后并没有 src/ 目录。
+#
+# ⚠️ nickname 为必填项。留空时本插件会拒绝注册 meow_push_bridge 工具并打印错误，
+#    这是刻意设计的行为，用于防止误推到未知账号。
+#    修改昵称后，重载插件（保存本文件触发 hmr，或重启 dsh）即可生效。
+# ────────────────────────────────────────────────────────────────
+
+- insert:
+    - id: meow-push-bridge
+      name: meow-push-bridge
+      config:
+        # 【必填】你的 MeoW 用户昵称，对应推送地址 http://api.chuckfang.com/{nickname}/...
+        nickname: ""
+        # 【可选】MeoW API 基础地址，默认 http://api.chuckfang.com
+        apiBase: "http://api.chuckfang.com"
+        # 【可选】请求超时毫秒数，默认 10000
+        timeout: 10000
+        # 【可选】同一会话内的推送节流窗口毫秒数，默认 5000（5 秒内不重复推送）
+        throttleMs: 5000
