@@ -20,7 +20,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { Config } from '../dist/index.ts'
-import { LOADER_EXPRESSION_DEF, SchemaBuilder, toRootSchema } from '../dist/schema.ts'
+import { LOADER_EXPRESSION_DEF, SCHEMASTERY_BRAND, SchemaBuilder, toRootSchema } from '../dist/schema.ts'
 
 /** 复刻 Cordis 的 ValidationError 文案构造 */
 function cordisValidationMessage(issues: { message: string; path?: readonly unknown[] }[]): string {
@@ -73,31 +73,28 @@ test('校验是同步的（Cordis 明确拒绝 Async config validation）', () =
   assert.ok('value' in result)
 })
 
-test('缺省字段被默认值补齐（这是 Cordis 会把结果交给 apply 的 config）', () => {
+test('配置只有昵称一个字段（其余请求细节已固化，不再暴露）', () => {
   const resolved = cordisResolveConfig({ Config }, { nickname: 'chuck' }) as Record<string, unknown>
   assert.equal(resolved['nickname'], 'chuck')
-  assert.equal(resolved['apiBase'], 'http://api.chuckfang.com')
-  assert.equal(resolved['timeout'], 10_000)
-  assert.equal(resolved['throttleMs'], 5_000)
+  assert.deepEqual(Object.keys(resolved), ['nickname'], '不应再有其他配置字段')
 })
 
-test('null / undefined / 空对象都视为「缺省」，只补默认值不报错', () => {
+test('null / undefined / 空对象都视为「缺省」，不报错', () => {
   for (const input of [null, undefined, {}]) {
     const resolved = cordisResolveConfig({ Config }, input) as Record<string, unknown>
-    assert.equal(resolved['apiBase'], 'http://api.chuckfang.com', `输入 ${String(input)} 应补默认值`)
-    assert.equal(resolved['timeout'], 10_000)
     // nickname 无默认值 → 不写入，交由运行期判定「未配置」
     assert.ok(!('nickname' in resolved) || resolved['nickname'] === undefined)
+    assert.deepEqual(Object.keys(resolved), [], `输入 ${String(input)} 不应产生额外字段`)
   }
 })
 
 test('类型错误 → issues 带 path，且能拼出 Cordis 的报错文案', () => {
   assert.throws(
-    () => cordisResolveConfig({ Config }, { nickname: 'chuck', timeout: 'oops' }),
+    () => cordisResolveConfig({ Config }, { nickname: 42 }),
     (error: unknown) => {
       assert.ok(error instanceof TypeError)
       assert.match((error as Error).message, /invalid config:/)
-      assert.match((error as Error).message, /expect number \(at timeout\)/)
+      assert.match((error as Error).message, /expect string \(at nickname\)/)
       return true
     },
   )
@@ -122,17 +119,14 @@ test('设置页用户清空昵称 → 不报校验错（昵称判定交给运行
 
 // ─────────────── 2. 表单字段元数据 ───────────────
 
-test('JSON Schema 投影包含全部 5 个可编辑字段与中文说明', () => {
+test('JSON Schema 投影只含 nickname 一个可编辑字段与中文说明', () => {
   const shape = toRootSchema(Config)
   const branch = shape.anyOf?.[0]
   assert.ok(branch !== undefined, '顶层应是 anyOf[id-targeted, loaderExpression] 形状')
   assert.deepEqual(branch.type, ['object', 'null'])
 
   const properties = branch.properties ?? {}
-  assert.deepEqual(
-    Object.keys(properties).sort(),
-    ['apiBase', 'nickname', 'pushMode', 'throttleMs', 'timeout'],
-  )
+  assert.deepEqual(Object.keys(properties).sort(), ['nickname'])
 
   for (const [key, node] of Object.entries(properties)) {
     const inner = node.anyOf?.[0]
@@ -141,18 +135,6 @@ test('JSON Schema 投影包含全部 5 个可编辑字段与中文说明', () =>
     assert.ok((inner.description ?? '').length > 0)
     assert.deepEqual(node.anyOf?.[1], { $ref: '#/$defs/loaderExpression' })
   }
-})
-
-test('数字字段带默认值与范围约束', () => {
-  const branch = toRootSchema(Config).anyOf?.[0]
-  const timeout = branch?.properties?.['timeout']?.anyOf?.[0]
-  assert.equal(timeout?.default, 10_000)
-  assert.equal(timeout?.minimum, 100)
-  assert.equal(timeout?.maximum, 120_000)
-
-  const throttle = branch?.properties?.['throttleMs']?.anyOf?.[0]
-  assert.equal(throttle?.default, 5_000)
-  assert.equal(throttle?.minimum, 0)
 })
 
 test('nickname 无默认值（缺失必须由运行期拒绝注册，而不是被默认值掩盖）', () => {
@@ -192,20 +174,67 @@ test('节点形状：type 是数据类型（不是自定义标识），dict/meta
   }
   assert.equal(config.type, 'object', "type 必须是 'object'：占用它会让 volatileForm 与 redact 都失效")
   assert.equal(config.meta.volatile, true, '根节点需标记 volatile')
-  assert.deepEqual(
-    Object.keys(config.dict).sort(),
-    ['apiBase', 'nickname', 'pushMode', 'throttleMs', 'timeout'],
-  )
+  assert.deepEqual(Object.keys(config.dict).sort(), ['nickname'])
   assert.equal(config.dict['nickname']?.type, 'string')
-  assert.equal(config.dict['timeout']?.type, 'number')
-  assert.equal(config.dict['pushMode']?.type, 'string', 'pushMode 是枚举字符串（设置页下拉）')
   for (const [key, child] of Object.entries(config.dict)) {
     assert.equal(child.meta.volatile, true, `${key} 必须标记 volatile，否则设置页整棵剪掉`)
   }
 })
 
-test('复刻 volatileForm：我们的 Config 能通过设置页的筛选闸门', () => {
-  /** 逐行照抄 dsh-settings 的 volatileForm 判定（plainSchema 部分用等价检查代替） */
+// ─────── 宿主识别：schemastery 品牌标记（设置页命名空间的前提） ───────
+//
+// 依据 @deepseek-ai/dsh-app-boot 的 isNativeConfigSchema：
+//   Reflect.get(value, Symbol.for('schemastery')) === true
+//   && typeof Reflect.get(value, 'type') === 'string'
+//   && meta !== null && typeof meta === 'object'
+// 不满足时 dsh-tool-cordis 的 liveConfig() 返回 status:'unsupported'，
+// 该条目就不会出现在 settings.describe() 的命名空间里 ——
+// 症状是设置页显示「宿主未提供本插件的配置命名空间」。
+
+/** 逐字复刻宿主的 isNativeConfigSchema */
+function hostIsNativeConfigSchema(value: unknown): boolean {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false
+  const target = value as object
+  const meta = Reflect.get(target, 'meta')
+  return (
+    Reflect.get(target, Symbol.for('schemastery')) === true &&
+    typeof Reflect.get(target, 'type') === 'string' &&
+    meta !== null &&
+    typeof meta === 'object'
+  )
+}
+
+test('Config 带 schemastery 品牌标记，能被宿主识别为原生 schema', () => {
+  assert.equal(Reflect.get(Config as object, SCHEMASTERY_BRAND), true)
+  assert.equal(
+    Reflect.get(Config as object, Symbol.for('schemastery')),
+    true,
+    '必须用全局注册表的 Symbol.for("schemastery")，否则宿主的另一份实现认不出来',
+  )
+  assert.equal(hostIsNativeConfigSchema(Config), true, '不通过则设置页拿不到配置命名空间')
+})
+
+test('所有子节点同样带品牌标记（宿主可能逐节点检查）', () => {
+  const dict = (Config as unknown as { dict: Record<string, unknown> }).dict
+  for (const [key, child] of Object.entries(dict)) {
+    assert.equal(hostIsNativeConfigSchema(child), true, `字段 ${key} 缺品牌标记或形状不对`)
+  }
+})
+
+test('去掉品牌标记后会被宿主判为 unsupported（反向验证检查有效）', () => {
+  const decoy = Object.create(null) as Record<string | symbol, unknown>
+  Reflect.set(decoy, 'type', 'object')
+  Reflect.set(decoy, 'meta', {})
+  assert.equal(hostIsNativeConfigSchema(decoy), false, '没有品牌标记就不该通过')
+
+  // 缺 meta 也不通过
+  const noMeta = Object.create(null) as Record<string | symbol, unknown>
+  Reflect.set(noMeta, Symbol.for('schemastery'), true)
+  Reflect.set(noMeta, 'type', 'object')
+  assert.equal(hostIsNativeConfigSchema(noMeta), false, '缺 meta 不该通过')
+})
+
+test('复刻 volatileForm：我们的 Config 能通过设置页的筛选闸门', () => {  /** 逐行照抄 dsh-settings 的 volatileForm 判定（plainSchema 部分用等价检查代替） */
   function hasForm(schema: unknown): boolean {
     const node = schema as { meta?: { volatile?: boolean }; type?: string; dict?: Record<string, unknown> }
     if (node.meta?.volatile === true) return true
@@ -226,34 +255,27 @@ test('toJSON() 返回 schemastery 的 { uid, refs }，且 refs 内含 type/meta/
   assert.equal(root.type, 'object')
   assert.ok('meta' in root)
   assert.ok('dict' in root)
-  // 每个字段也应在 refs 里（通过 uid 引用）：根 + 5 个字段
-  assert.equal(Object.keys(json.refs).length, 6, '根 + 5 个字段')
+  // 每个字段也应在 refs 里（通过 uid 引用）：根 + 1 个字段
+  assert.equal(Object.keys(json.refs).length, 2, '根 + 1 个字段')
 })
 
-test('pushMode 投影出 enum，供设置页渲染下拉', () => {
-  const branch = toRootSchema(Config).anyOf?.[0]
-  const inner = branch?.properties?.['pushMode']?.anyOf?.[0]
-  assert.deepEqual(inner?.enum, ['every-turn', 'substantial', 'off'])
-  assert.equal(inner?.default, 'every-turn')
-})
-
-test('pushMode 校验拒绝非法取值', () => {
+test('配置只有 nickname 时校验通过；多余字段被忽略', () => {
   const standard = (Config as unknown as {
     '~standard': { validate(value: unknown): { issues?: { message: string }[]; value?: unknown } }
   })['~standard']
-  const bad = standard.validate({ nickname: 'n', pushMode: 'bogus' })
-  assert.ok(bad.issues !== undefined, '非法 pushMode 应产生 issue')
-  assert.match(bad.issues?.[0]?.message ?? '', /every-turn/)
-  const good = standard.validate({ nickname: 'n', pushMode: 'substantial' })
-  assert.equal((good.value as { pushMode?: string }).pushMode, 'substantial')
+  const good = standard.validate({ nickname: '骏骏爱编程' })
+  assert.equal(good.issues, undefined)
+  assert.equal((good.value as { nickname?: string }).nickname, '骏骏爱编程')
+
+  // 旧的已移除字段不应导致校验失败（平滑升级）
+  const legacy = standard.validate({ nickname: 'n', apiBase: 'http://x', pushMode: 'off' })
+  assert.equal(legacy.issues, undefined, '旧的已移除字段应被容忍')
 })
 
-test('meta 形状对齐 schemastery：default 放 meta.default，description 是 locale 字典', () => {
+test('meta 形状对齐 schemastery：description 是 locale 字典，nickname 无默认值', () => {
   const dict = (Config as unknown as {
     dict: Record<string, { meta: { default?: unknown; description?: Record<string, string> } }>
   }).dict
-  assert.equal(dict['apiBase']?.meta.default, 'http://api.chuckfang.com')
-  assert.equal(dict['timeout']?.meta.default, 10_000)
   assert.ok(!('default' in (dict['nickname']?.meta ?? {})), 'nickname 不应有默认值')
   // schemastery 的 mergeDesc/i18n 按 locale 字典处理 description
   assert.equal(typeof dict['nickname']?.meta.description, 'object')

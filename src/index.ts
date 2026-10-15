@@ -17,6 +17,8 @@ import { registerAutoPush, type AutoPushContext } from './auto-push.js'
 import {
   ConfigError,
   DEFAULT_API_BASE,
+  FIXED_REQUEST,
+  FIXED_THROTTLE_MS,
   MEOW_NICKNAME_REQUIRED_MESSAGE,
   resolveConfig,
   type ResolvedMeoWConfig,
@@ -27,6 +29,14 @@ import { assertInvariants, createInvariants, registerInvariants } from './invari
 import { registerPromptSection } from './prompt.js'
 import { SchemaBuilder } from './schema.js'
 import { defineTool, text, type ToolDefinition } from './tool.js'
+
+/**
+ * 文档规定的发送间隔下限（毫秒）。
+ * 依据官方文档「通用说明」：非会员上限为 3 秒 1 条、每分钟 15 条、每小时 60 条，
+ * 超出返回业务状态码 429。这里对**自动推送**做同样的最小间隔保护，
+ * 避免每轮必推时把 3 秒内连续的多轮打到 429。
+ */
+export const MIN_SEND_INTERVAL_MS = 3_000
 
 /**
  * Config schema 声明（Cordis 约定：插件模块导出 `Config`）。
@@ -51,33 +61,11 @@ import { defineTool, text, type ToolDefinition } from './tool.js'
  */
 export const Config = SchemaBuilder.object({
   nickname: SchemaBuilder.string()
-    .description('必填：你的 MeoW 用户昵称（对应推送地址 http://api.chuckfang.com/{nickname}/... 的第一段）')
+    .description(
+      '必填：你的 MeoW 用户昵称（对应推送地址第一段；官方文档：昵称不允许包含斜杠）',
+    )
     // .volatile() 是设置页出现表单的硬性要求：dsh-settings 的 volatileForm()
     // 会剪掉所有未标 volatile 的字段，全被剪掉就等于设置页里看不到本插件。
-    .volatile(),
-  apiBase: SchemaBuilder.string()
-    .description('可选：MeoW API 基础地址，默认 http://api.chuckfang.com')
-    .default('http://api.chuckfang.com')
-    .volatile(),
-  timeout: SchemaBuilder.number()
-    .description('可选：单次请求超时毫秒数，默认 10000，允许范围 100–120000')
-    .default(10_000)
-    .min(100)
-    .max(120_000)
-    .volatile(),
-  throttleMs: SchemaBuilder.number()
-    .description('可选：同一会话推送节流窗口毫秒数，默认 5000，设为 0 关闭节流')
-    .default(5_000)
-    .min(0)
-    .max(120_000)
-    .volatile(),
-  pushMode: SchemaBuilder.string()
-    .description(
-      '自动推送模式：every-turn = 每轮回答结束都推（宿主必推，不依赖模型）；'
-        + 'substantial = 仅当本轮用过工具才推；off = 只保留手动'
-    )
-    .default('every-turn')
-    .enum(['every-turn', 'substantial', 'off'])
     .volatile(),
 }).volatile()
 
@@ -116,6 +104,36 @@ interface PluginContext {
   effect?(callback: () => (() => void) | void, label?: string): unknown
   /** 系统提示服务；缺省时跳过「任务完成自动推送」提示词注册（不影响工具） */
   readonly systemPrompt?: unknown
+  /**
+   * 可选服务查询。
+   *
+   * ⚠️ 可选服务（如 sessions）**必须**走这个方法读取，不能直接写 `ctx.sessions`：
+   * Cordis 对未列入 `inject` 的服务属性读取会抛
+   * `Error: cannot get property "sessions" without inject`，
+   * 导致整个插件激活失败。
+   */
+  get?(key: string): unknown
+}
+
+/**
+ * 安全读取一个**可选**宿主服务。
+ *
+ * 优先用官方推荐的 `ctx.get(key)`；不可用时退化为带 try/catch 的属性读取
+ * （老版本 Cordis 可能没有 `get`）。两条路径都不会抛出。
+ */
+function readOptionalService(ctx: PluginContext, key: string): unknown {
+  if (typeof ctx.get === 'function') {
+    try {
+      return ctx.get(key)
+    } catch {
+      return undefined
+    }
+  }
+  try {
+    return (ctx as unknown as Record<string, unknown>)[key]
+  } catch {
+    return undefined
+  }
 }
 
 /** 兜底日志：logger 不可用时回落到 console，保证「拒绝加载」绝不会静默 */
@@ -166,9 +184,39 @@ function throttleKeyOf(exec: unknown): string {
 // 节流簿放在模块作用域（而非 apply 闭包内），便于测试直接观察与重置。
 const lastPushAt = new Map<string, number>()
 
+/**
+ * 最近一次「成功发出请求」的时间戳（毫秒）。
+ *
+ * 与 lastPushAt 的区别：lastPushAt 是**按会话**的节流簿，
+ * 这个是**全局发送间隔**，用于遵守 MeoW 文档里的限流（非会员 3 秒 1 条）。
+ * 自动推送每轮都会触发，多条消息在 3 秒内连发会被 MeoW 判 429，
+ * 因此这里做客户端侧的间隔保护。
+ */
+let lastSendAt = 0
+
 /** 清空节流簿（仅测试使用） */
 export function resetThrottleState(): void {
   lastPushAt.clear()
+  lastSendAt = 0
+}
+
+/** 距离下一次可发送还需等待多少毫秒（<=0 表示可以立刻发） */
+export function remainingGlobalWindow(
+  lastAt: number,
+  minIntervalMs: number,
+  now: number = Date.now(),
+): number {
+  if (minIntervalMs <= 0 || lastAt <= 0) return 0
+  const elapsed = now - lastAt
+  return elapsed >= minIntervalMs ? 0 : minIntervalMs - elapsed
+}
+
+/** 等待若干毫秒（用于遵守发送间隔） */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    ;(timer as { unref?: () => void }).unref?.()
+  })
 }
 
 /** 节流判定结果 */
@@ -240,49 +288,70 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
   }
 
   // ── 4. 统一的发送函数（工具与自动推送共用）────────────────────────
+  // 请求细节全部固化：GET + text + HTTPS + 10s 超时（见 config.ts 的 FIXED_REQUEST）。
+  // 用户只需要配置昵称。
   const sendPush = (
     title: string,
     message: string,
     url?: string,
     signal?: AbortSignal,
-  ): Promise<PushOutcome> =>
-    pushToMeow(
-      {
-        nickname: config.nickname,
-        title,
-        message,
-        ...(url === undefined || url === '' ? {} : { url }),
-      },
-      config.apiBase,
-      signal === undefined ? { timeout: config.timeout } : { timeout: config.timeout, signal },
-    )
+  ): Promise<PushOutcome> => {
+    // 文档限流保护：与上次成功发送保持至少 MIN_SEND_INTERVAL_MS 间隔
+    const wait = remainingGlobalWindow(lastSendAt, MIN_SEND_INTERVAL_MS)
+    return (wait > 0 ? sleep(wait) : Promise.resolve()).then(() =>
+      pushToMeow(
+        {
+          nickname: config.nickname,
+          title,
+          message,
+          ...(url === undefined || url === '' ? {} : { url }),
+          msgType: FIXED_REQUEST.msgType,
+          htmlHeight: FIXED_REQUEST.htmlHeight,
+        },
+        {
+          apiBase: FIXED_REQUEST.apiBase,
+          method: FIXED_REQUEST.method,
+          timeout: FIXED_REQUEST.timeout,
+          ...(signal === undefined ? {} : { signal }),
+        },
+      ),
+    ).then((outcome) => {
+      if (outcome.ok) lastSendAt = Date.now()
+      return outcome
+    })
+  }
 
   // ── 5. 注册工具 ─────────────────────────────────────────────────
   const meowTool = defineTool<MeowToolArgs, string>({
     name: TOOL_NAME,
     description:
-      `通过 MeoW API 向已配置的鸿蒙手机推送一条通知。message 必填；title 缺省为 "${DEFAULT_TITLE}"。`,
+      `通过 MeoW API 向已配置的鸿蒙手机推送一条通知。message 必填；title 缺省为 "${DEFAULT_TITLE}"。`
+      + '支持纯文本与 HTML（由插件配置 msgType 决定）。',
     parameters: {
       type: 'object',
       properties: {
         title: {
           type: 'string',
-          description: `通知标题，可选，缺省为 "${DEFAULT_TITLE}"`,
+          description: `消息标题，可选，缺省为 "${DEFAULT_TITLE}"`,
         },
         message: {
           type: 'string',
-          description: '通知正文（必填），例如「构建已完成，用时 42s」',
+          description: '消息内容（必填），例如「构建已完成，用时 42s」',
         },
         url: {
           type: 'string',
           description: '可选，点击通知后跳转的链接',
+        },
+        imgUrl: {
+          type: 'string',
+          description: '可选，本条消息的通知图标 URL（官方建议 216×216、PNG）',
         },
       },
       required: ['message'],
       additionalProperties: false,
     },
     // 与 meow-api 的请求超时对齐，再留 2s 余量，避免被工具调度层先超时掐断
-    timeoutMs: config.timeout + 2_000,
+    timeoutMs: FIXED_REQUEST.timeout + 2_000,
     isConcurrencySafe: () => true,
     output: {
       schema: { type: 'string', description: '推送结果的可读文本' },
@@ -304,19 +373,41 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
           ? args.title.trim()
           : DEFAULT_TITLE
       const url = typeof args?.url === 'string' && args.url.trim() !== '' ? args.url.trim() : undefined
+      const argImgUrl =
+        typeof args?.imgUrl === 'string' && args.imgUrl.trim() !== '' ? args.imgUrl.trim() : undefined
 
-      // (3) 节流：同一会话 throttleMs 内不重复推送
-      const throttle = checkThrottle(lastPushAt, throttleKeyOf(exec), config.throttleMs)
+      // (3) 节流：同一会话在固化窗口内不重复推送（间隔不可配置）
+      const throttle = checkThrottle(lastPushAt, throttleKeyOf(exec), FIXED_THROTTLE_MS)
       if (throttle.blocked) {
-        return `⚠️ 推送已节流：同一会话在 ${config.throttleMs}ms 内只能推送一次，请 ${throttle.retryInMs}ms 后重试。`
+        return `⚠️ 推送已节流：同一会话在 ${FIXED_THROTTLE_MS}ms 内只能推送一次，请 ${throttle.retryInMs}ms 后重试。`
       }
 
-      // (4) 发出请求：URL 构造 / 编码 / 超时 / 错误分类都在 meow-api.ts
-      const outcome = await sendPush(title, message, url, exec.signal)
+      // (4) 发出请求（sendPush 内部已做文档限流的最小间隔保护）
+      const outcome =
+        argImgUrl === undefined
+          ? await sendPush(title, message, url, exec.signal)
+          : await pushToMeow(
+              {
+                nickname: config.nickname,
+                title,
+                message,
+                ...(url === undefined ? {} : { url }),
+                imgUrl: argImgUrl,
+                msgType: FIXED_REQUEST.msgType,
+                htmlHeight: FIXED_REQUEST.htmlHeight,
+              },
+              {
+                apiBase: FIXED_REQUEST.apiBase,
+                method: FIXED_REQUEST.method,
+                timeout: FIXED_REQUEST.timeout,
+                signal: exec.signal,
+              },
+            )
 
       // (5) 仅成功时记账，失败允许立即重试
       if (outcome.ok) {
         lastPushAt.set(throttleKeyOf(exec), Date.now())
+        lastSendAt = Date.now()
       } else {
         log(ctx, 'warn', `推送未成功（${outcome.kind}）：${outcome.message}`)
       }
@@ -327,7 +418,13 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
 
   // ── 4. 运行包自有不变式 + 尽力注册到宿主 ─────────────────────────
   // 说明：assertInvariants 是纯函数，无论宿主是否提供注册通道都会在加载期执行。
-  const invariants = createInvariants({ pluginName: name, inject, definition: meowTool, config })
+  const invariants = createInvariants({
+    pluginName: name,
+    inject,
+    definition: meowTool,
+    config,
+    configSchema: Config,
+  })
   const violations = assertInvariants(invariants)
   if (violations.length > 0) {
     for (const violation of violations) {
@@ -367,9 +464,30 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
 
   // ── 7. 注册宿主侧自动推送（确定性，不依赖模型）────────────────────
   // 监听 agent/turn-stopping：轮次结束时由宿主直接推送，保证每轮都有。
-  // 刻意**绕过工具级 5 秒节流**（否则「每轮必推」做不到），改为按轮次去重。
+  // 正文是**本轮对话总结**（用户提问 + 模型最终回复 + 工具统计尾巴），
+  // 内容来自 sessions 服务的 Session.snapshotEvents()（见 src/summary.ts）。
+  // 模式固定为 every-turn（不再可配）；按轮次去重，并遵守文档的 3 秒最小发送间隔。
+  //
+  // ⚠️ sessions 是**可选**服务，必须用 ctx.get('sessions') 查询，不能写 ctx.sessions：
+  //    Cordis 对「未出现在 inject 里的服务属性」读取会直接抛错
+  //    （Error: cannot get property "sessions" without inject），
+  //    那会让整个插件激活失败（fixture 里显示「1 entry did not activate」）。
+  //    官方对该服务的可选访问写法就是 ctx.get("sessions") + undefined 检查。
+  const sessionStore = readOptionalService(ctx, 'sessions')
   const autoPush = registerAutoPush(ctx as unknown as AutoPushContext, {
-    mode: config.pushMode,
+    mode: 'every-turn',
+    lookupSession: (sessionId) => {
+      const store = sessionStore as { get?: unknown } | undefined
+      if (store === undefined || typeof store.get !== 'function') return undefined
+      const live = (store.get as (id: string) => unknown).call(store, sessionId)
+      if (live === null || live === undefined) return undefined
+      const candidate = live as { snapshotEvents?: unknown }
+      if (typeof candidate.snapshotEvents !== 'function') return undefined
+      return {
+        snapshotEvents: () =>
+          (candidate.snapshotEvents as () => readonly unknown[]).call(live),
+      }
+    },
     send: async (title, message) => {
       const outcome = await sendPush(title, message)
       if (outcome.ok) lastPushAt.set('global', Date.now())
@@ -377,23 +495,35 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
     },
   })
   if (autoPush.registered) {
-    log(ctx, 'info', `自动推送已启用：模式 ${config.pushMode}。`)
+    log(
+      ctx,
+      'info',
+      sessionStore === undefined
+        ? '自动推送已启用：每轮回答结束都推送（未提供 sessions 服务，正文为统计式）。'
+        : '自动推送已启用：每轮回答结束都推送「提问 + 回复」总结。',
+    )
   } else {
     log(ctx, 'info', `自动推送未启用（${autoPush.reason ?? 'unknown'}）；仍可让 Agent 主动调用工具。`)
   }
 
-  log(ctx, 'info', `✅ 已启用：昵称 "${config.nickname}"，API ${config.apiBase}，超时 ${config.timeout}ms。`)
-  log(ctx, 'info', `   已注册工具：${TOOL_NAME}（title / message 必填项见 schema）`)
+  log(
+    ctx,
+    'info',
+    `✅ 已启用：昵称 "${config.nickname}"，API ${FIXED_REQUEST.apiBase}（${FIXED_REQUEST.method}，超时 ${FIXED_REQUEST.timeout}ms）。`,
+  )
+  log(ctx, 'info', `   已注册工具：${TOOL_NAME}（message 必填，title / url / imgUrl 可选）`)
 }
 
 /** 工具入参：nickname 不在这里，它来自插件配置 */
 export interface MeowToolArgs {
   /** 可选，缺省 DEFAULT_TITLE（"MeoW Push Bridge"） */
   title?: string
-  /** 必填，通知正文 */
+  /** 必填，消息内容 */
   message: string
   /** 可选，点击跳转链接 */
   url?: string
+  /** 可选，本条消息的通知图标 URL（覆盖插件配置里的 imgUrl） */
+  imgUrl?: string
 }
 
 // 便于测试与外部复用

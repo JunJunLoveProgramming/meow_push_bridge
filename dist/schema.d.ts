@@ -49,6 +49,30 @@ export interface StandardIssue {
     message: string;
     path?: readonly (string | number)[];
 }
+/**
+ * schemastery 的品牌符号（`Symbol.for('schemastery')`）。
+ *
+ * 这是**宿主识别「这是原生 Config schema」的唯一标识**，来自
+ * `@deepseek-ai/dsh-app-boot` 的 `isNativeConfigSchema`：
+ *
+ * ```js
+ * function isNativeConfigSchema(value) {
+ *   const meta = Reflect.get(value, 'meta')
+ *   return Reflect.get(value, Symbol.for('schemastery')) === true
+ *     && typeof Reflect.get(value, 'type') === 'string'
+ *     && meta !== null && typeof meta === 'object'
+ * }
+ * ```
+ *
+ * 它被 `dsh-tool-cordis` 的 `liveConfig(entry)` 用来决定配置条目的状态：
+ * 不满足时返回 `status: 'unsupported'`，于是该条目的 Config **不会**进入
+ * `settings.describe()` 的命名空间列表 —— 症状就是设置页显示
+ * 「宿主未提供本插件的配置命名空间」。
+ *
+ * 注意用 `Symbol.for`（全局注册表）而不是 `Symbol()`：宿主的 schemastery
+ * 与我们的零依赖实现是**两份不同的代码**，只有全局注册表的同名符号才能对上。
+ */
+export declare const SCHEMASTERY_BRAND: unique symbol;
 /** Standard Schema 的校验结果 */
 export type StandardResult<T> = {
     value: T;

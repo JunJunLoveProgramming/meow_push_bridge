@@ -16,7 +16,8 @@
  * 只使用可擦除 TypeScript 语法。
  */
 
-import type { ResolvedMeoWConfig } from './config.js'
+import { FIXED_REQUEST, type ResolvedMeoWConfig } from './config.js'
+import { SCHEMASTERY_BRAND } from './schema.js'
 
 /** 工具名常量在此重复声明，避免与 index.ts 形成循环依赖 */
 export const EXPECTED_TOOL_NAME = 'meow_push_bridge'
@@ -51,6 +52,8 @@ export interface InvariantInput {
   definition: unknown
   /** 模块作用域内解析出的配置 */
   config: ResolvedMeoWConfig
+  /** 插件导出的 Config schema（用于校验宿主能识别它） */
+  configSchema?: unknown
 }
 
 /** 从任意工具定义里安全读出 parameters（不存在则返回 undefined） */
@@ -173,7 +176,7 @@ export function createInvariants(input: InvariantInput): InvariantDefinition[] {
     },
     {
       id: 'meow-push-bridge/runtime-config',
-      description: '运行时配置必须已被归一化：昵称非空、地址合法、超时为正数',
+      description: '运行时配置必须已被归一化：昵称非空，且固化的请求参数合法',
       check: () => {
         const violations: InvariantViolation[] = []
         if (input.config.nickname.trim() === '') {
@@ -182,19 +185,61 @@ export function createInvariants(input: InvariantInput): InvariantDefinition[] {
             message: '运行时配置 nickname 为空。',
           })
         }
-        if (!/^https?:\/\/[^/\s]+/i.test(input.config.apiBase)) {
+        // 请求参数已固化（见 config.ts 的 FIXED_REQUEST），这里校验常量本身没被改坏
+        if (!/^https?:\/\/[^/\s]+/i.test(FIXED_REQUEST.apiBase)) {
           violations.push({
             id: 'meow-push-bridge/runtime-config',
-            message: `apiBase 非法："${input.config.apiBase}"。`,
+            message: `固化的 apiBase 非法："${FIXED_REQUEST.apiBase}"。`,
           })
         }
-        if (!(input.config.timeout > 0)) {
+        if (!(FIXED_REQUEST.timeout > 0)) {
           violations.push({
             id: 'meow-push-bridge/runtime-config',
-            message: `timeout 必须为正数，实际为 ${input.config.timeout}。`,
+            message: `固化的 timeout 必须为正数，实际为 ${FIXED_REQUEST.timeout}。`,
+          })
+        }
+        if (FIXED_REQUEST.method !== 'GET' && FIXED_REQUEST.method !== 'POST') {
+          violations.push({
+            id: 'meow-push-bridge/runtime-config',
+            message: `固化的 method 非法："${String(FIXED_REQUEST.method)}"。`,
           })
         }
         return violations
+      },
+    },
+    {
+      id: 'meow-push-bridge/config-schema-native',
+      description:
+        'Config 必须能被宿主识别为原生 schemastery（否则设置页报「宿主未提供本插件的配置命名空间」）',
+      check: () => {
+        const schema = input.configSchema
+        if (schema === undefined) return [] // 未提供则不检查（测试可省略）
+        // 复刻 @deepseek-ai/dsh-app-boot 的 isNativeConfigSchema。
+        // schema 是 unknown，先窄化成对象再反射读字段。
+        if (schema === null || (typeof schema !== 'object' && typeof schema !== 'function')) {
+          return [
+            {
+              id: 'meow-push-bridge/config-schema-native',
+              message: 'Config 必须是对象。',
+            },
+          ]
+        }
+        const target = schema as object
+        const meta: unknown = Reflect.get(target, 'meta')
+        const native =
+          Reflect.get(target, SCHEMASTERY_BRAND) === true &&
+          typeof Reflect.get(target, 'type') === 'string' &&
+          meta !== null &&
+          typeof meta === 'object'
+        if (native) return []
+        return [
+          {
+            id: 'meow-push-bridge/config-schema-native',
+            message:
+              'Config 缺少 schemastery 品牌标记（Symbol.for("schemastery")）：' +
+              '宿主会把它判为 unsupported，设置页将显示「宿主未提供本插件的配置命名空间」。',
+          },
+        ]
       },
     },
   ]

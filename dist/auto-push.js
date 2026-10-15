@@ -7,11 +7,15 @@
  *   实测同一个模型在不同上下文/任务/会话里会忽略它，于是「部分环境不推」。
  *   本模块改为在宿主侧监听轮次结束事件后**直接推送**，不依赖模型。
  *
+ * 推送内容：**本轮对话总结**（用户提问 + 模型最终回复 + 工具统计尾巴）。
+ *   正文由 src/summary.ts 从 `Session.snapshotEvents()` 提取 —— 宿主层因此
+ *   不需要 LLM 就能给出「说了什么」，而不是只报「调了几次工具」。
+ *
  * DSH 契约（来自运行时的服务/事件目录，非推断）：
  *   - 事件 `'agent/turn-stopping'(this: Scoped<Agent>, payload: { agent, turn, signal })`
  *     —— 「本轮即将结束」的串行事件，全局注册的插件可以收到。
  *   - 事件 `'session/event'(this: Scoped<Session>, session, event)`
- *     —— 会话事件的提交后观察流，用于统计「本轮用了哪些工具」。
+ *     —— 会话事件的提交后观察流，用于记录本轮开始时间与工具调用次数。
  *     注意它带 carrier（作用域过滤），所以统计是**尽力而为**：
  *     拿不到统计时退化为简洁文案，但**轮次结束的推送照常发出**。
  *
@@ -19,9 +23,10 @@
  *   - 推送**不经过工具**，因此不受工具级 5 秒节流限制（否则每轮必推做不到）；
  *     改为按 (会话, 轮次) 去重，保证同一轮只推一条。
  *   - 模型自己推的那条排在前面（它在轮内调用），宿主这条在轮末补位，符合
- *     「统计式描述放在最后」的预期。
+ *     「总结放在最后」的预期。
  */
 import { DEFAULT_TITLE } from './meow-api.js';
+import { formatSummary, summarizeTurn } from './summary.js';
 /** 所有合法模式（供配置归一化与测试引用） */
 export const PUSH_MODES = ['every-turn', 'substantial', 'off'];
 /** 默认模式：每轮必推 */
@@ -30,6 +35,24 @@ export const DEFAULT_PUSH_MODE = 'every-turn';
 function readNumber(value) {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
+/**
+ * 安全读取 `ctx.on`。
+ *
+ * ⚠️ 必须 try/catch：Cordis 对**未列入 inject 的服务属性**读取会直接抛错
+ * （`Error: cannot get property "on" without inject`），而不是返回 undefined。
+ * 本插件只 inject 了 `tools`，所以 `ctx.on` 属于未注入；
+ * 直接读会让整个插件激活失败（fixture 显示「1 entry did not activate」）。
+ * 拿不到事件通道时静默降级：不注册自动推送，但工具照常可用。
+ */
+function readOn(ctx) {
+    try {
+        const on = ctx.on;
+        return typeof on === 'function' ? on : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
 /** 读取会话 id（session.id 或 agent.id 都可作为去重键） */
 function readSessionId(source) {
     if (source === null || typeof source !== 'object')
@@ -37,7 +60,7 @@ function readSessionId(source) {
     const id = source.id;
     return typeof id === 'string' && id !== '' ? id : undefined;
 }
-/** 把统计渲染成中文文案（用户要求：统计式描述，放在最后） */
+/** 把统计渲染成中文文案（无对话内容时的降级形态） */
 export function renderTurnStats(stats, now = Date.now()) {
     const seconds = Math.max(0, Math.round((now - stats.startedAt) / 1000));
     if (stats.toolCalls === 0) {
@@ -47,6 +70,28 @@ export function renderTurnStats(stats, now = Date.now()) {
     const shown = names.slice(0, 4).join('、');
     const more = names.length > 4 ? ` 等 ${names.length} 种` : '';
     return `本轮已完成：调用 ${stats.toolCalls} 次工具（${shown}${more}），耗时 ${seconds}s`;
+}
+/**
+ * 组装一条推送正文：优先用对话总结，拿不到会话时退化为统计。
+ *
+ * 导出以便单元测试直接覆盖，不必搭完整事件流。
+ */
+export function buildAutoPushBody(stats, session, now = Date.now()) {
+    const seconds = Math.max(0, Math.round((now - stats.startedAt) / 1000));
+    if (session === undefined)
+        return renderTurnStats(stats, now);
+    try {
+        const summary = summarizeTurn(session, stats.turn);
+        // 总结里拿不到工具数时，用事件流统计到的数字兜底（更准）
+        if (summary.toolCalls === 0 && stats.toolCalls > 0) {
+            summary.toolCalls = stats.toolCalls;
+            summary.tools = stats.tools;
+        }
+        return formatSummary(summary, seconds);
+    }
+    catch {
+        return renderTurnStats(stats, now);
+    }
 }
 /**
  * 注册宿主侧自动推送。
@@ -62,7 +107,8 @@ export function registerAutoPush(ctx, options) {
     if (options.mode === 'off') {
         return { registered: false, reason: 'pushMode=off' };
     }
-    const on = ctx.on;
+    // 安全读取：ctx.on 未被 inject，直接读会抛错（见 readOn 的说明）
+    const on = readOn(ctx);
     if (typeof on !== 'function') {
         return { registered: false, reason: 'ctx.on unavailable' };
     }
@@ -143,9 +189,18 @@ export function registerAutoPush(ctx, options) {
                         if (oldest !== undefined)
                             pushed.delete(oldest);
                     }
-                    const outcome = await options.send(DEFAULT_TITLE, renderTurnStats(stats, Date.now()));
+                    // 取会话对象以提取对话总结（拿不到则降级为统计文案）
+                    let session;
+                    try {
+                        session = options.lookupSession?.(sessionId);
+                    }
+                    catch (error) {
+                        log('warn', `读取会话失败，本轮退化为统计文案：${String(error)}`);
+                    }
+                    const body = buildAutoPushBody(stats, session, Date.now());
+                    const outcome = await options.send(DEFAULT_TITLE, body);
                     if (outcome.ok) {
-                        log('info', `第 ${turn} 轮自动推送成功。`);
+                        log('info', `第 ${turn} 轮自动推送成功（${session === undefined ? '统计' : '总结'}）。`);
                     }
                     else {
                         log('warn', `第 ${turn} 轮自动推送失败（${outcome.kind}）：${outcome.message}`);

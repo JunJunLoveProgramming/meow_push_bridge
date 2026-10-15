@@ -29,6 +29,7 @@ import {
   resetThrottleState,
 } from '../dist/index.ts'
 import {
+  FIXED_REQUEST,
   MEOW_NICKNAME_REQUIRED,
   MEOW_NICKNAME_REQUIRED_MESSAGE,
   resolveConfig,
@@ -82,12 +83,8 @@ function createContext(options: {
   return { ctx, registered, logs }
 }
 
-const VALID_CONFIG = {
-  nickname: 'chuck',
-  apiBase: 'http://api.chuckfang.com',
-  timeout: 10_000,
-  throttleMs: 5_000,
-}
+/** 现在配置只有一个字段：昵称 */
+const VALID_CONFIG = { nickname: 'chuck' }
 
 // ─────────────────────── 1. 导出契约 ───────────────────────
 
@@ -153,7 +150,7 @@ test('配置合法 → 注册 meow_push_bridge，schema 与描述正确', () => 
     required: string[]
     additionalProperties: boolean
   }
-  assert.deepEqual(Object.keys(parameters.properties).sort(), ['message', 'title', 'url'])
+  assert.deepEqual(Object.keys(parameters.properties).sort(), ['imgUrl', 'message', 'title', 'url'])
   assert.ok(!Object.prototype.hasOwnProperty.call(parameters.properties, 'nickname'), 'nickname 不得出现在入参')
   assert.deepEqual([...parameters.required], ['message'])
   assert.equal(parameters.additionalProperties, false)
@@ -163,8 +160,8 @@ test('配置合法 → 注册 meow_push_bridge，schema 与描述正确', () => 
   const blocks = tool.output.render({ message: 'hi' }, '✅ ok')
   assert.deepEqual(blocks, [{ type: 'text', text: '✅ ok' }])
 
-  // timeoutMs 比请求超时多 2s
-  assert.equal(tool.timeoutMs, VALID_CONFIG.timeout + 2_000)
+  // timeoutMs 比固化的请求超时多 2s
+  assert.equal(tool.timeoutMs, FIXED_REQUEST.timeout + 2_000)
   const infos = logs.filter((entry) => entry.level === 'info')
   assert.ok(infos.some((entry) => entry.message.includes('chuck')), 'info 日志应回显已启用的昵称')
 })
@@ -242,7 +239,7 @@ test('包自有不变式：能捕获违规定义（反向验证检查器有效�
         name: 'other_tool',
         parameters: { type: 'object', properties: { nickname: {} }, required: [] },
       },
-      config: { nickname: '', apiBase: 'not-a-url', timeout: -1, throttleMs: 0, pushMode: 'off' },
+      config: { nickname: '' },
     }),
   )
   const ids = violations.map((violation) => violation.id)
@@ -255,18 +252,133 @@ test('包自有不变式：能捕获违规定义（反向验证检查器有效�
   assert.ok(ids.includes('meow-push-bridge/runtime-config'))
 })
 
-// ─────────────── 5. 配置归一化 ───────────────
+// ───────────── Cordis 服务访问纪律（回归） ─────────────
+//
+// 事故背景：曾经在 index.ts 里写了 `const sessionStore = ctx.sessions`，
+// 而 inject 只声明了 ['tools']。Cordis 对**未注入的服务属性**读取会直接抛错：
+//   Error: cannot get property "sessions" without inject
+// 结果是整个插件激活失败，fixture 里显示「1 entry did not activate」。
+// 正确写法是 ctx.get('sessions')（可选服务查询）。
 
-test('resolveConfig 归一化：缺省值、去空格、去尾部斜杠、数字夹取', () => {
-  const config = resolveConfig({ nickname: '  chuck  ', apiBase: 'https://example.com/api//' })
+/** 造一个「读未注入服务属性就抛错」的上下文，复刻 Cordis 的 PropertyProxy 行为。
+ *
+ * 关键区分（来自真实报错与 Cordis 行为）：
+ *   - Context 成员（get / on / effect / logger / config）始终可访问；
+ *   - **服务属性**（sessions 等）未列入 inject 时读取即抛
+ *     `cannot get property "x" without inject`。
+ */
+function createStrictContext(config: unknown): {
+  ctx: Record<string, unknown>
+  registered: ToolDefinition<unknown, string>[]
+  reads: string[]
+} {
+  const registered: ToolDefinition<unknown, string>[] = []
+  const reads: string[] = []
+  const contextMembers = new Set(['config', 'logger', 'tools', 'effect', 'get', 'on'])
+
+  const target: Record<string, unknown> = {
+    config,
+    logger: { error: () => {}, warn: () => {}, info: () => {} },
+    tools: {
+      register: (definition: ToolDefinition<unknown, string>) => {
+        registered.push(definition)
+        return () => {}
+      },
+    },
+    on: () => () => {},
+    get: (key: string) => {
+      reads.push(key)
+      // 未提供 sessions：模拟服务不存在
+      return undefined
+    },
+  }
+
+  const ctx = new Proxy(target, {
+    get(object, property, receiver) {
+      if (typeof property === 'string' && !contextMembers.has(property)) {
+        throw new Error(`cannot get property "${property}" without inject`)
+      }
+      return Reflect.get(object, property, receiver)
+    },
+  }) as Record<string, unknown>
+
+  return { ctx, registered, reads }
+}
+
+test('apply 不会直接读取未注入的服务（否则 Cordis 会抛错并使插件激活失败）', () => {
+  const { ctx, registered, reads } = createStrictContext({ nickname: 'chuck' })
+  // 不抛错即为通过：任何 `ctx.sessions` 之类的直接读取都会在这里炸掉
+  assert.doesNotThrow(() => apply(ctx))
+  assert.equal(registered.length, 1, '工具应已注册')
+  assert.ok(reads.includes('sessions'), '应当通过 ctx.get("sessions") 查询可选服务')
+})
+
+test('sessions 服务缺失时：仍注册工具，自动推送降级为统计文案', () => {
+  const { ctx, registered, reads } = createStrictContext({ nickname: 'chuck' })
+  apply(ctx)
+  assert.equal(registered.length, 1)
+  assert.deepEqual(reads, ['sessions'], '只应查询 sessions 一次')
+})
+
+test('sessions 服务存在时：不会因为包装会话而抛错', () => {
+  const session = {
+    snapshotEvents: () => [
+      { type: 'user/message', data: { turn: 1, content: [{ type: 'text', text: '你好' }] } },
+    ],
+  }
+  const contextMembers = new Set(['config', 'logger', 'tools', 'effect', 'get', 'on'])
+  const target: Record<string, unknown> = {
+    config: { nickname: 'chuck' },
+    logger: { error: () => {}, warn: () => {}, info: () => {} },
+    tools: { register: () => () => {} },
+    on: () => () => {},
+    get: (key: string) =>
+      key === 'sessions'
+        ? { get: (id: string) => (id === 's1' ? session : undefined) }
+        : undefined,
+  }
+  const ctx = new Proxy(target, {
+    get(object, property, receiver) {
+      if (typeof property === 'string' && !contextMembers.has(property)) {
+        throw new Error(`cannot get property "${property}" without inject`)
+      }
+      return Reflect.get(object, property, receiver)
+    },
+  }) as Record<string, unknown>
+
+  assert.doesNotThrow(() => apply(ctx))
+})
+
+// ─────────────────────── 5. 配置归一化 ───────────────────────
+
+test('resolveConfig：只保留昵称，并去掉首尾空格', () => {
+  const config = resolveConfig({ nickname: '  chuck  ' })
   assert.equal(config.nickname, 'chuck')
-  assert.equal(config.apiBase, 'https://example.com/api')
-  assert.equal(config.timeout, 10_000)
-  assert.equal(config.throttleMs, 5_000)
+  assert.deepEqual(Object.keys(config), ['nickname'], '归一化结果只应有 nickname')
+})
 
-  const bad = resolveConfig({ nickname: 'chuck', timeout: 9_999_999, throttleMs: 'abc' })
-  assert.equal(bad.timeout, 10_000, '超界回退默认')
-  assert.equal(bad.throttleMs, 5_000, '非数字回退默认')
+test('resolveConfig：旧配置里的已移除字段被忽略并给出 warn（平滑升级）', () => {
+  const warnings: string[] = []
+  const config = resolveConfig(
+    {
+      nickname: 'chuck',
+      apiBase: 'https://example.com/api',
+      method: 'POST',
+      timeout: 5_000,
+      throttleMs: 0,
+      pushMode: 'off',
+      msgType: 'html',
+      htmlHeight: 400,
+      imgUrl: 'https://e.com/i.png',
+    },
+    (message) => warnings.push(message),
+  )
+  assert.equal(config.nickname, 'chuck')
+  assert.deepEqual(Object.keys(config), ['nickname'], '已移除字段不得进入运行时配置')
+  assert.equal(warnings.length, 1, '应只给出一条汇总提示')
+  for (const key of ['apiBase', 'method', 'timeout', 'throttleMs', 'pushMode', 'msgType', 'htmlHeight', 'imgUrl']) {
+    assert.ok(warnings[0]?.includes(key), `提示里应包含被忽略的字段：${key}`)
+  }
 })
 
 test('resolveConfig：非字符串 nickname 抛 ConfigError(MEOW_NICKNAME_REQUIRED)', () => {

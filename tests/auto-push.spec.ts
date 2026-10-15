@@ -12,6 +12,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import type { PushOutcome } from '../dist/meow-api.ts'
 import {
   DEFAULT_PUSH_MODE,
   PUSH_MODES,
@@ -48,7 +49,7 @@ const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 
 
 /** 收集推送调用 */
 function createSender(): {
-  send: (title: string, message: string) => Promise<{ ok: true; status: number; url: string; body: string }>
+  send: (title: string, message: string) => Promise<PushOutcome>
   pushes: { title: string; message: string }[]
 } {
   const pushes: { title: string; message: string }[] = []
@@ -56,7 +57,7 @@ function createSender(): {
     pushes,
     send: async (title, message) => {
       pushes.push({ title, message })
-      return { ok: true as const, status: 200, url: 'http://example.com', body: '{"status":200}' }
+      return { ok: true as const, status: 200, url: 'http://example.com', message: '推送成功' }
     },
   }
 }
@@ -129,6 +130,129 @@ test('every-turn：轮次结束即推送，且统计本轮工具调用', async (
   assert.equal(pushes[0]?.title, 'MeoW Push Bridge', '自动推送使用统一的默认标题')
   assert.match(pushes[0]?.message ?? '', /调用 3 次工具/)
   assert.match(pushes[0]?.message ?? '', /pwsh/)
+})
+
+// ─────────────── 对话总结（含正文） ───────────────
+
+test('提供会话时：推送「你问 + 回复 + 统计」总结，而不是纯统计', async () => {
+  const { ctx, fire } = createAutoPushContext()
+  const { send, pushes } = createSender()
+
+  const session = {
+    snapshotEvents: () => [
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 0,
+        data: { turn: 5, content: [{ type: 'text', text: '帮我把按钮修好' }] },
+      },
+      {
+        type: 'tool/call',
+        seq: 2,
+        time: 0,
+        data: { turn: 5, step: 1, callId: 'c', name: 'read', arguments: '{}' },
+      },
+      {
+        type: 'assistant/message',
+        seq: 3,
+        time: 0,
+        data: {
+          turn: 5,
+          step: 2,
+          message: { role: 'assistant', content: [{ type: 'text', text: '已修好，是事件绑定漏了' }] },
+        },
+      },
+    ],
+  }
+
+  registerAutoPush(ctx, {
+    mode: 'every-turn',
+    send,
+    lookupSession: (id) => (id === 'session-1' ? session : undefined),
+  })
+
+  fire('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 5 } })
+  fire('session/event', { id: 'session-1' }, { type: 'tool/call', data: { turn: 5, name: 'read' } })
+  fire('agent/turn-stopping', { agent: AGENT, turn: 5 })
+  await flush()
+
+  assert.equal(pushes.length, 1)
+  const body = pushes[0]?.message ?? ''
+  assert.match(body, /【你问】帮我把按钮修好/)
+  assert.match(body, /【回复】已修好，是事件绑定漏了/)
+  assert.match(body, /调用 1 次工具/)
+  const lines = body.split('\n')
+  assert.match(lines[lines.length - 1] ?? '', /^（/, '统计信息应排在最后一行')
+})
+
+test('拿不到会话时：仍会推送，正文降级为统计', async () => {
+  const { ctx, fire } = createAutoPushContext()
+  const { send, pushes } = createSender()
+  registerAutoPush(ctx, { mode: 'every-turn', send, lookupSession: () => undefined })
+
+  fire('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 1 } })
+  fire('agent/turn-stopping', { agent: AGENT, turn: 1 })
+  await flush()
+
+  assert.equal(pushes.length, 1, '拿不到会话也必须推送')
+  assert.match(pushes[0]?.message ?? '', /本轮已完成/)
+  assert.ok(!(pushes[0]?.message ?? '').includes('【你问】'))
+})
+
+test('lookupSession 抛错时：不中断推送，退化为统计', async () => {
+  const { ctx, fire } = createAutoPushContext()
+  const { send, pushes } = createSender()
+  registerAutoPush(ctx, {
+    mode: 'every-turn',
+    send,
+    lookupSession: () => {
+      throw new Error('sessions 服务异常')
+    },
+  })
+
+  fire('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 2 } })
+  fire('agent/turn-stopping', { agent: AGENT, turn: 2 })
+  await flush()
+
+  assert.equal(pushes.length, 1, '会话读取失败不应吞掉推送')
+  assert.match(pushes[0]?.message ?? '', /本轮已完成/)
+})
+
+test('总结里没有工具事件时，用事件流统计兜底工具次数', async () => {
+  const { ctx, fire } = createAutoPushContext()
+  const { send, pushes } = createSender()
+
+  const session = {
+    snapshotEvents: () => [
+      {
+        type: 'user/message',
+        seq: 1,
+        time: 0,
+        data: { turn: 3, content: [{ type: 'text', text: '跑测试' }] },
+      },
+      {
+        type: 'assistant/message',
+        seq: 2,
+        time: 0,
+        data: {
+          turn: 3,
+          step: 1,
+          message: { role: 'assistant', content: [{ type: 'text', text: '全绿' }] },
+        },
+      },
+    ],
+  }
+
+  registerAutoPush(ctx, { mode: 'every-turn', send, lookupSession: () => session })
+  fire('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 3 } })
+  fire('session/event', { id: 'session-1' }, { type: 'tool/call', data: { turn: 3, name: 'pwsh' } })
+  fire('session/event', { id: 'session-1' }, { type: 'tool/call', data: { turn: 3, name: 'pwsh' } })
+  fire('agent/turn-stopping', { agent: AGENT, turn: 3 })
+  await flush()
+
+  const body = pushes[0]?.message ?? ''
+  assert.match(body, /【回复】全绿/)
+  assert.match(body, /调用 2 次工具/, '工具数应用事件流统计兜底')
 })
 
 test('every-turn：纯问答（无工具）也要推', async () => {

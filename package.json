@@ -1,6 +1,6 @@
 {
   "name": "meow-push-bridge",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MeoW Push Bridge (喵桥) — 让 DSH Agent 通过 MeoW API 向鸿蒙手机推送通知的工具插件（零运行时依赖）",
   "keywords": [
     "dsh",

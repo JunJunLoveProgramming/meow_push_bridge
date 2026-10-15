@@ -40,13 +40,8 @@ window.__ModuleLoader__.load({
       title: '喵桥 · MeoW 推送',
       intro: '配置完成后，Agent 可以调用 meow_push_bridge 工具把通知推送到你的鸿蒙手机。',
       nickname: 'MeoW 昵称',
-      nicknameHint: '必填。对应推送地址 http://api.chuckfang.com/{昵称}/… 的第一段。留空则不会注册推送工具。',
-      apiBase: 'API 地址',
-      apiBaseHint: '可选。默认 http://api.chuckfang.com；如需自建反代可改这里。',
-      timeout: '请求超时（毫秒）',
-      timeoutHint: '可选。默认 10000，允许 100–120000。',
-      throttleMs: '节流窗口（毫秒）',
-      throttleHint: '可选。同一会话在此窗口内只推送一次，默认 5000；填 0 关闭节流。',
+      nicknameHint: '必填。对应推送地址 https://api.chuckfang.com/{昵称}/… 的第一段。官方文档：昵称不允许包含斜杠。留空则不会注册推送工具。',
+      fixedNote: '其余请求细节（HTTPS 地址、GET 方法、10 秒超时、纯文本格式、每轮自动推送）已按官方推荐值固化，无需配置。',
       save: '保存',
       saving: '保存中…',
       saved: '已保存，插件已热应用。',
@@ -54,25 +49,16 @@ window.__ModuleLoader__.load({
       loading: '正在读取插件配置…',
       missing: '宿主未提供本插件的配置命名空间，请确认插件已启用。',
       openDocument: '打开配置文件',
+      copyright: '© 2026 骏骏爱编程 · MIT 开源许可',
+      qqGroup: 'QQ 交流群：1051489523',
     }
     const en = {
       tab: 'MeoW Bridge',
       title: 'MeoW Push Bridge',
       intro: 'Once configured, the Agent can push notifications to your HarmonyOS phone via meow_push_bridge.',
       nickname: 'MeoW nickname',
-      nicknameHint: 'Required. It is the first path segment of http://api.chuckfang.com/{nickname}/… Leave it empty and the tool is not registered.',
-      apiBase: 'API base URL',
-      apiBaseHint: 'Optional. Defaults to http://api.chuckfang.com.',
-      timeout: 'Request timeout (ms)',
-      timeoutHint: 'Optional. Defaults to 10000, allowed 100–120000.',
-      throttleMs: 'Throttle window (ms)',
-      throttleHint: 'Optional. One push per session inside this window, default 5000; 0 disables throttling.',
-      pushMode: 'Auto-push mode',
-      pushModeHint:
-        'every-turn = push after every reply (host-driven, never depends on the model); substantial = only when tools ran; off = manual only.',
-      pushModeEveryTurn: 'Every reply',
-      pushModeSubstantial: 'Only when work was done',
-      pushModeOff: 'Off (manual only)',
+      nicknameHint: 'Required. The first path segment of https://api.chuckfang.com/{nickname}/… The spec forbids slashes in a nickname. Leave it empty and the tool is not registered.',
+      fixedNote: 'All other request details (HTTPS base, GET, 10s timeout, plain text, auto-push every reply) are fixed to the spec-recommended values.',
       save: 'Save',
       saving: 'Saving…',
       saved: 'Saved; the plugin is applied live.',
@@ -80,28 +66,12 @@ window.__ModuleLoader__.load({
       loading: 'Reading plugin configuration…',
       missing: 'The host serves no configuration namespace for this plugin; make sure it is enabled.',
       openDocument: 'Open config file',
+      copyright: '© 2026 JunJunLoveProgramming · MIT licensed',
+      qqGroup: 'QQ group: 1051489523',
     }
 
-    /** 字段元数据：面板上按这个顺序渲染 */
-    const FIELDS = [
-      { key: 'nickname', kind: 'string', label: 'nickname', hint: 'nicknameHint' },
-      { key: 'apiBase', kind: 'string', label: 'apiBase', hint: 'apiBaseHint' },
-      { key: 'timeout', kind: 'number', label: 'timeout', hint: 'timeoutHint' },
-      { key: 'throttleMs', kind: 'number', label: 'throttleMs', hint: 'throttleHint' },
-      {
-        key: 'pushMode',
-        kind: 'select',
-        label: 'pushMode',
-        hint: 'pushModeHint',
-        // 必须与宿主半体的枚举完全一致（src/auto-push.ts 的 PUSH_MODES），
-        // 否则用户在下拉里选的值会被 {@link validate} 判为非法。
-        options: [
-          { value: 'every-turn', labelKey: 'pushModeEveryTurn' },
-          { value: 'substantial', labelKey: 'pushModeSubstantial' },
-          { value: 'off', labelKey: 'pushModeOff' },
-        ],
-      },
-    ]
+    /** 字段元数据：面板上按这个顺序渲染（刻意只保留昵称一项） */
+    const FIELDS = [{ key: 'nickname', kind: 'string', label: 'nickname', hint: 'nicknameHint' }]
 
     /** 判断某个命名空间是否属于本插件（容忍 id 命名风格差异） */
     function isMeoWNamespace(ns) {
@@ -242,7 +212,8 @@ window.__ModuleLoader__.load({
                   React.createElement(
                     'option',
                     { key: option.value, value: option.value },
-                    `${t(option.labelKey)}（${option.value}）`,
+                    // 只显示中文标签；value 仍是英文枚举值（宿主据此校验）
+                    t(option.labelKey),
                   ),
                 ),
               )
@@ -332,6 +303,29 @@ window.__ModuleLoader__.load({
               },
               '↻',
             ),
+          ),
+        )
+
+        // ── 页脚：版权 + QQ 交流群（用户要求放在保存按钮下方）──────────
+        const divider = { borderTop: '1px solid var(--dsw-alias-border-l2, #d9d9d9)', margin: '10px 0 0' }
+        children.push(React.createElement('hr', { key: 'footer-divider', style: divider }))
+        children.push(
+          React.createElement(
+            'div',
+            {
+              key: 'footer',
+              style: {
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '6px 14px',
+                fontSize: '12px',
+                color: 'var(--dsw-alias-label-tertiary, #8c8c8c)',
+              },
+            },
+            React.createElement('span', null, t('copyright')),
+            React.createElement('span', { style: { color: 'var(--dsw-alias-border-l2, #d9d9d9)' } }, '·'),
+            React.createElement('span', null, t('qqGroup')),
           ),
         )
       }

@@ -53,6 +53,31 @@ export interface StandardIssue {
   path?: readonly (string | number)[]
 }
 
+/**
+ * schemastery 的品牌符号（`Symbol.for('schemastery')`）。
+ *
+ * 这是**宿主识别「这是原生 Config schema」的唯一标识**，来自
+ * `@deepseek-ai/dsh-app-boot` 的 `isNativeConfigSchema`：
+ *
+ * ```js
+ * function isNativeConfigSchema(value) {
+ *   const meta = Reflect.get(value, 'meta')
+ *   return Reflect.get(value, Symbol.for('schemastery')) === true
+ *     && typeof Reflect.get(value, 'type') === 'string'
+ *     && meta !== null && typeof meta === 'object'
+ * }
+ * ```
+ *
+ * 它被 `dsh-tool-cordis` 的 `liveConfig(entry)` 用来决定配置条目的状态：
+ * 不满足时返回 `status: 'unsupported'`，于是该条目的 Config **不会**进入
+ * `settings.describe()` 的命名空间列表 —— 症状就是设置页显示
+ * 「宿主未提供本插件的配置命名空间」。
+ *
+ * 注意用 `Symbol.for`（全局注册表）而不是 `Symbol()`：宿主的 schemastery
+ * 与我们的零依赖实现是**两份不同的代码**，只有全局注册表的同名符号才能对上。
+ */
+export const SCHEMASTERY_BRAND: unique symbol = Symbol.for('schemastery') as never
+
 /** Standard Schema 的校验结果 */
 export type StandardResult<T> = { value: T; issues?: undefined } | { issues: StandardIssue[] }
 
@@ -182,6 +207,10 @@ export class Schema<T = unknown> {
     this.kind = kind
     // schemastery 的 object 类型默认 meta.default = {}
     this.meta = kind === 'object' ? { default: {} } : {}
+    // 打上宿主识别的品牌标记。缺了它，dsh-tool-cordis 会把本插件的配置条目
+    // 判为 'unsupported'，设置页就会报「宿主未提供本插件的配置命名空间」。
+    // 用 Reflect.set 写入：计算属性名里的符号在类型层面不好标注。
+    Reflect.set(this, SCHEMASTERY_BRAND, true)
   }
 
   // ── 对齐 schemastery 的内部形状（设置页表单靠这些字段工作） ──────

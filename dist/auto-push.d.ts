@@ -7,11 +7,15 @@
  *   实测同一个模型在不同上下文/任务/会话里会忽略它，于是「部分环境不推」。
  *   本模块改为在宿主侧监听轮次结束事件后**直接推送**，不依赖模型。
  *
+ * 推送内容：**本轮对话总结**（用户提问 + 模型最终回复 + 工具统计尾巴）。
+ *   正文由 src/summary.ts 从 `Session.snapshotEvents()` 提取 —— 宿主层因此
+ *   不需要 LLM 就能给出「说了什么」，而不是只报「调了几次工具」。
+ *
  * DSH 契约（来自运行时的服务/事件目录，非推断）：
  *   - 事件 `'agent/turn-stopping'(this: Scoped<Agent>, payload: { agent, turn, signal })`
  *     —— 「本轮即将结束」的串行事件，全局注册的插件可以收到。
  *   - 事件 `'session/event'(this: Scoped<Session>, session, event)`
- *     —— 会话事件的提交后观察流，用于统计「本轮用了哪些工具」。
+ *     —— 会话事件的提交后观察流，用于记录本轮开始时间与工具调用次数。
  *     注意它带 carrier（作用域过滤），所以统计是**尽力而为**：
  *     拿不到统计时退化为简洁文案，但**轮次结束的推送照常发出**。
  *
@@ -19,9 +23,10 @@
  *   - 推送**不经过工具**，因此不受工具级 5 秒节流限制（否则每轮必推做不到）；
  *     改为按 (会话, 轮次) 去重，保证同一轮只推一条。
  *   - 模型自己推的那条排在前面（它在轮内调用），宿主这条在轮末补位，符合
- *     「统计式描述放在最后」的预期。
+ *     「总结放在最后」的预期。
  */
 import { type PushOutcome } from './meow-api.js';
+import { type SessionLike } from './summary.js';
 /** 自动推送模式 */
 export type PushMode = 'every-turn' | 'substantial' | 'off';
 /** 所有合法模式（供配置归一化与测试引用） */
@@ -49,16 +54,27 @@ export interface TurnStats {
 /** 自动推送的注入项 */
 export interface AutoPushOptions {
     mode: PushMode;
-    /** 实际执行推送（由 index.ts 注入，内部会复用工具级节流） */
+    /** 实际执行推送（由 index.ts 注入，内部含节流与最小发送间隔保护） */
     send: (title: string, message: string) => Promise<PushOutcome>;
+    /**
+     * 按会话 id 取会话对象（用于提取对话总结）。
+     * 拿不到会话时自动降级为纯统计文案。
+     */
+    lookupSession?: (sessionId: string) => SessionLike | undefined;
 }
 /** 注册结果 */
 export interface AutoPushRegistration {
     registered: boolean;
     reason?: string;
 }
-/** 把统计渲染成中文文案（用户要求：统计式描述，放在最后） */
+/** 把统计渲染成中文文案（无对话内容时的降级形态） */
 export declare function renderTurnStats(stats: TurnStats, now?: number): string;
+/**
+ * 组装一条推送正文：优先用对话总结，拿不到会话时退化为统计。
+ *
+ * 导出以便单元测试直接覆盖，不必搭完整事件流。
+ */
+export declare function buildAutoPushBody(stats: TurnStats, session: SessionLike | undefined, now?: number): string;
 /**
  * 注册宿主侧自动推送。
  *

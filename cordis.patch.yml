@@ -10,17 +10,17 @@
 # ⚠️ nickname 为必填项。留空时本插件会拒绝注册 meow_push_bridge 工具并打印错误，
 #    这是刻意设计的行为，用于防止误推到未知账号。
 #    修改昵称后，重载插件（保存本文件触发 hmr，或重启 dsh）即可生效。
+#
+# 配置面刻意保持最小：**只有昵称需要填写**。
+# 其余请求细节已按官方文档的推荐值固化在代码里（见 src/config.ts 的 FIXED_REQUEST）：
+#   API 地址 https://api.chuckfang.com、方法 GET、超时 10s、格式 text、
+#   节流窗口 5s、自动推送 every-turn、最小发送间隔 3s。
 # ────────────────────────────────────────────────────────────────
 
 - insert:
     - id: meow-push-bridge
       name: meow-push-bridge
       config:
-        # 【必填】你的 MeoW 用户昵称，对应推送地址 http://api.chuckfang.com/{nickname}/...
+        # 【必填】你的 MeoW 用户昵称，对应推送地址 https://api.chuckfang.com/{昵称}/...
+        # 官方文档：昵称不允许包含斜杠。
         nickname: ""
-        # 【可选】MeoW API 基础地址，默认 http://api.chuckfang.com
-        apiBase: "http://api.chuckfang.com"
-        # 【可选】请求超时毫秒数，默认 10000
-        timeout: 10000
-        # 【可选】同一会话内的推送节流窗口毫秒数，默认 5000（5 秒内不重复推送）
-        throttleMs: 5000

@@ -7,17 +7,13 @@
 #       dsh --profile web --patch ./cordis.debug.patch.yml
 #
 # 与 cordis.patch.yml 的唯一区别是 name：这里指向源码，那里指向包名。
+#
+# 配置面刻意保持最小：**只有昵称需要填写**（其余请求细节已固化，见 src/config.ts）。
 # ────────────────────────────────────────────────────────────────
 
 - insert:
     - id: meow-push-bridge
       name: ./src/index.ts
       config:
-        # 【必填】你的 MeoW 用户昵称
+        # 【必填】你的 MeoW 用户昵称（官方文档：不允许包含斜杠）
         nickname: ""
-        # 【可选】MeoW API 基础地址，默认 http://api.chuckfang.com
-        apiBase: "http://api.chuckfang.com"
-        # 【可选】请求超时毫秒数，默认 10000
-        timeout: 10000
-        # 【可选】同一会话内的推送节流窗口毫秒数，默认 5000
-        throttleMs: 5000

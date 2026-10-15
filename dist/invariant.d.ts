@@ -15,7 +15,7 @@
  *
  * 只使用可擦除 TypeScript 语法。
  */
-import type { ResolvedMeoWConfig } from './config.js';
+import { type ResolvedMeoWConfig } from './config.js';
 /** 工具名常量在此重复声明，避免与 index.ts 形成循环依赖 */
 export declare const EXPECTED_TOOL_NAME = "meow_push_bridge";
 export declare const EXPECTED_PLUGIN_ID = "meow-push-bridge";
@@ -45,6 +45,8 @@ export interface InvariantInput {
     definition: unknown;
     /** 模块作用域内解析出的配置 */
     config: ResolvedMeoWConfig;
+    /** 插件导出的 Config schema（用于校验宿主能识别它） */
+    configSchema?: unknown;
 }
 /**
  * 构建包自有不变式集合。

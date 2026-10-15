@@ -14,6 +14,13 @@
  */
 import { type ToolDefinition } from './tool.js';
 /**
+ * 文档规定的发送间隔下限（毫秒）。
+ * 依据官方文档「通用说明」：非会员上限为 3 秒 1 条、每分钟 15 条、每小时 60 条，
+ * 超出返回业务状态码 429。这里对**自动推送**做同样的最小间隔保护，
+ * 避免每轮必推时把 3 秒内连续的多轮打到 429。
+ */
+export declare const MIN_SEND_INTERVAL_MS = 3000;
+/**
  * Config schema 声明（Cordis 约定：插件模块导出 `Config`）。
  *
  * 作用：让 DSH 的 settings 服务把本插件配置投影成「设置页表单」，
@@ -65,9 +72,20 @@ interface PluginContext {
     effect?(callback: () => (() => void) | void, label?: string): unknown;
     /** 系统提示服务；缺省时跳过「任务完成自动推送」提示词注册（不影响工具） */
     readonly systemPrompt?: unknown;
+    /**
+     * 可选服务查询。
+     *
+     * ⚠️ 可选服务（如 sessions）**必须**走这个方法读取，不能直接写 `ctx.sessions`：
+     * Cordis 对未列入 `inject` 的服务属性读取会抛
+     * `Error: cannot get property "sessions" without inject`，
+     * 导致整个插件激活失败。
+     */
+    get?(key: string): unknown;
 }
 /** 清空节流簿（仅测试使用） */
 export declare function resetThrottleState(): void;
+/** 距离下一次可发送还需等待多少毫秒（<=0 表示可以立刻发） */
+export declare function remainingGlobalWindow(lastAt: number, minIntervalMs: number, now?: number): number;
 /** 节流判定结果 */
 export interface ThrottleDecision {
     blocked: boolean;
@@ -91,10 +109,12 @@ export declare function apply(ctx: PluginContext, injected?: unknown): void;
 export interface MeowToolArgs {
     /** 可选，缺省 DEFAULT_TITLE（"MeoW Push Bridge"） */
     title?: string;
-    /** 必填，通知正文 */
+    /** 必填，消息内容 */
     message: string;
     /** 可选，点击跳转链接 */
     url?: string;
+    /** 可选，本条消息的通知图标 URL（覆盖插件配置里的 imgUrl） */
+    imgUrl?: string;
 }
 export type { ResolvedMeoWConfig, MeoWConfig } from './config.js';
 export { ConfigError, resolveConfig } from './config.js';
