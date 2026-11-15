@@ -60,6 +60,8 @@ export interface PushRequest {
   url?: string
   /** 通知图标 URL，可选（查询参数）；文档建议 216×216 PNG */
   imgUrl?: string
+  /** 自定义分类名，可选；最多 10 个字，空表示不分类 */
+  category?: string
   /** 消息显示类型：text（默认，纯文本）或 html（App 内渲染） */
   msgType?: MeoWMsgType
   /** 仅 msgType=html 时生效，HTML 显示高度（像素），默认 200 */
@@ -204,11 +206,23 @@ export function normalizeHtmlHeight(value: unknown): number {
   return Math.min(MAX_HTML_HEIGHT, Math.max(MIN_HTML_HEIGHT, Math.trunc(parsed)))
 }
 
+/** 归一化自定义分类：去空白；空或超长/含控制字符时返回 undefined（不发送非法参数） */
+export function normalizePushCategory(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const text = value.trim()
+  if (text === '') return undefined
+  if ([...text].length > 10) return undefined
+  if (/[\u0000-\u001F\u007F]/u.test(text)) return undefined
+  return text
+}
+
 /** 构造 GET 查询串：msgType / htmlHeight 属请求参数（文档「通用说明」） */
 function buildParamQuery(request: PushRequest): string {
   const query: string[] = []
   if (isFilled(request.url)) query.push(`url=${encodeURIComponent(request.url.trim())}`)
   if (isFilled(request.imgUrl)) query.push(`imgUrl=${encodeURIComponent(request.imgUrl.trim())}`)
+  const category = normalizePushCategory(request.category)
+  if (category !== undefined) query.push(`category=${encodeURIComponent(category)}`)
   const msgType = normalizeMsgType(request.msgType)
   query.push(`msgType=${msgType}`)
   if (msgType === 'html') query.push(`htmlHeight=${normalizeHtmlHeight(request.htmlHeight)}`)
@@ -246,6 +260,8 @@ export function buildMeowBody(request: PushRequest): Record<string, unknown> {
   if (isFilled(request.title)) body['title'] = request.title.trim()
   if (isFilled(request.url)) body['url'] = request.url.trim()
   if (isFilled(request.imgUrl)) body['imgUrl'] = request.imgUrl.trim()
+  const category = normalizePushCategory(request.category)
+  if (category !== undefined) body['category'] = category
   return body
 }
 

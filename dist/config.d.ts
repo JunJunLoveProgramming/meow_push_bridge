@@ -24,7 +24,7 @@ export declare const MEOW_NICKNAME_REQUIRED = "MEOW_NICKNAME_REQUIRED";
 export declare const MEOW_NICKNAME_REQUIRED_MESSAGE = "MeoW \u6635\u79F0\u672A\u914D\u7F6E\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u9875\u7684\u300C\u55B5\u6865\u300D\u91CC\u586B\u5199\u6635\u79F0\uFF0C\u6216\u4FEE\u6539 cordis.patch.yml \u540E\u91CD\u8F7D\u63D2\u4EF6\u3002";
 /**
  * 插件配置接口（对应 cordis.patch.yml 中该 entry 的 config 段）。
- * 只有一个必填字段。
+ * nickname 必填；title / imgUrl 属于会员主题（0.3.0 起）。
  */
 export interface MeoWConfig {
     /** 必填：MeoW 用户昵称（官方文档：不允许包含斜杠），空值会导致插件拒绝注册工具 */

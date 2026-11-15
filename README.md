@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/meow-push-bridge)](https://www.npmjs.com/package/meow-push-bridge)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20.6-339933)](https://nodejs.org)
-[![tests](https://img.shields.io/badge/tests-128%20passing-brightgreen)](#开发与测试)
+[![tests](https://img.shields.io/badge/tests-131%20passing-brightgreen)](#开发与测试)
 
 `meow-push-bridge` 是一个 DSH / Cordis 双半体插件：
 
@@ -28,6 +28,7 @@
 - [环境要求](#环境要求)
 - [安装](#安装)
 - [配置](#配置)
+- [会员主题与云端同步](#会员主题与云端同步)
 - [使用](#使用)
 - [工作方式](#工作方式)
 - [MeoW API 行为](#meow-api-行为)
@@ -43,7 +44,12 @@
 
 ## 特性
 
-- **配置极简**：DSH 设置 →「内置插件」→「喵桥」，**只需填一个 MeoW 昵称**
+- **配置极简**：DSH 设置 →「内置插件」→「喵桥」，**必填只有 MeoW 昵称**
+- **会员主题（0.3.0）**：登录会员后解锁「通知标题」与「自定义图标 URL」，按 MeoW API 规范随推送生效
+- **自定义分类（0.4.0）**：会员可改 `category`（默认 `dsh插件`，最多 10 字）；非会员固定 `dsh插件`
+- **主题不写 profile（0.4.0）**：主题存在宿主安全存储/云端，非会员手改配置也无法启用会员主题
+- **云端同步（0.3.0）**：昵称 + 标题 + 图标三个输入项可一键上传到会员站点数据库，换机后从云端导入
+- **授权可撤销**：浏览器完成会员授权后自动回到插件；点「取消授权」立即吊销令牌并恢复默认主题
 - **自动推送保证触发**：每轮回答结束都由宿主推送，不受模型是否遵守提示词影响
 - **加载期强校验**：`nickname` 未配置时拒绝注册工具并给出明确指引，避免误推到他人账号
 - **符合官方 API 规范**：按 [MeoW Push API 文档](https://www.chuckfang.com/MeoW/api_doc.html) 解析业务状态码（200/400/403/404/429/500），提示精确可操作
@@ -132,7 +138,9 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 
 ## 配置
 
-**只需填写一个 MeoW 昵称**，其余请求细节全部按官方推荐值固化在代码里，不对外暴露。
+**必填只有 MeoW 昵称**；`title` / `imgUrl` / `category` 属于**会员主题**，登录会员后才会在设置页显示。
+主题**不会写入 profile 配置**，而是保存在宿主安全存储与会员站点云端 —— 非会员即使手改 `cordis.patch.yml`
+也无法启用会员主题，未登录时一律使用固定默认（分类固定 `dsh插件`）。
 
 ### 在 DSH 设置页配置（推荐）
 
@@ -141,8 +149,11 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 | 字段 | 控件 | 说明 | 默认值 |
 |---|---|---|---|
 | `nickname` | 文本框 | **必填**：你的 MeoW 用户昵称（官方文档：不允许包含斜杠） | — |
+| `title` | 文本框（仅会员） | 通知标题 | `MeoW Push Bridge` |
+| `imgUrl` | 文本框（仅会员） | 通知图标 URL（官方建议 216×216 PNG） | 不附加图标 |
+| `category` | 文本框（仅会员） | 自定义分类，最多 10 个字 | `dsh插件` |
 
-保存后，DSH 的 `settings` 服务会把值写入该 profile 的 `cordis.patch.yml` 并热应用：
+保存后，昵称会由 DSH 的 `settings` 服务写入 profile：
 
 ```yaml
 - id: meow-push-bridge
@@ -150,6 +161,8 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
   config:
     nickname: 你的昵称
 ```
+
+> `title` / `imgUrl` / `category` **不要**写进 profile：即使写了也会被忽略并给出提示。
 
 ### 直接编辑配置文件
 
@@ -166,8 +179,11 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 | 字段 | 类型 | 必填 | 默认值 | 非法时 |
 |---|---|---|---|---|
 | `nickname` | string | ✅ | — | 拒绝注册工具 + error 日志 |
+| `title` | string | — | 空 → 使用 `MeoW Push Bridge` | 截断到 64 字 |
+| `imgUrl` | string | — | 空 → 不附加图标 | 非 http/https 时忽略并 warn |
+| `category` | string | — | `dsh插件` | 超过 10 字或含控制字符时拒绝保存 |
 
-归一化规则：`nickname` 去掉首尾空格。配置文件**不会**展开 `${ENV_VAR}`，请填写字面量昵称。
+昵称去掉首尾空格；配置文件**不会**展开 `${ENV_VAR}`，请填写字面量昵称。
 
 > 若 `nickname` 为空，插件会在日志中提示：
 > `❌ 插件未启用：MeoW 昵称未配置，请在设置页的「喵桥」里填写昵称，或修改 cordis.patch.yml 后重载插件。`
@@ -179,7 +195,7 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 | 参数 | 固化值 | 依据 |
 |---|---|---|
 | API 地址 | `https://api.chuckfang.com` | 官方推荐 HTTPS |
-| 请求方法 | `GET` | 官方支持 GET / POST，GET 即可满足文本推送 |
+| 请求方法 | `POST` | 官方支持 GET / POST；POST 把正文放 JSON Body，长文本更稳 |
 | 请求超时 | `10000` ms | 兼顾慢网络与体验 |
 | 消息格式 | `text`（纯文本） | 通知场景以纯文本为主 |
 | HTML 显示高度 | `200` | 仅 `html` 格式使用，当前固定为 text |
@@ -189,6 +205,60 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 
 > 需要极长消息或 HTML 渲染时，`src/meow-api.ts` 仍完整支持 `POST`、`msgType`、`htmlHeight`、
 > `imgUrl` 等参数（有对应单元测试），只是没有把它们做成配置项，保持界面极简。
+
+---
+
+## 会员主题与云端同步
+
+> 0.3.0 新增。主题设置是**会员功能**：未登录时设置页只显示昵称与「登录会员」按钮，
+> 登录成功后才显示「MeoW 通知标题」「自定义图标 URL」以及同步按钮。
+
+### 界面状态
+
+| 状态 | 设置页显示 |
+|---|---|
+| 未登录 | 昵称输入框 + 「登录会员」按钮 + 说明 |
+| 等待浏览器授权 | 按钮变为「等待浏览器授权…」，每 1.5 秒轮询一次 |
+| 已登录 | `已登录 <用户名>` + 主题两个输入框 + 「同步到云端」「从云端导入」「取消授权」 |
+| 已取消授权 | 回到未登录状态；主题恢复默认（标题/图标清空） |
+
+### 登录流程（loopback + PKCE）
+
+```
+DSH 设置页点击「登录会员」
+  → 宿主 POST /meow-push-bridge-api/auth/start（生成 state + PKCE）
+  → 宿主通过 subprocess 调 ShellExecute 打开系统默认浏览器 https://meowpushbridge.junjunloveprogramming.cn/plugin/authorize.php?...
+  → 会员登录并点击「授权」
+  → 站点 302 回 http://127.0.0.1:<port>/meow-push-bridge-api/auth/callback?code&state
+  → 宿主用 code + verifier 调 /plugin/token.php 换令牌
+  → 令牌存入宿主 credentials，设置页轮询到已授权
+```
+
+- 回调只接受 **loopback**（`127.0.0.1` / `localhost` / `[::1]`），防止授权码被钓鱼站点截走；
+- 授权码 5 分钟有效、一次性使用，兑换时校验 PKCE（S256）；
+- 令牌只在宿主侧使用，**不会返回给浏览器**；
+- 「取消授权」会调用 `/api/v1/revoke.php` 吊销远端令牌，并清除本地凭据。
+
+### 同步规则
+
+- **同步到云端**：把当前 `nickname` / `title` / `imgUrl` 三个输入项写入会员站点数据库（`user_data` 的 `meow.theme` 键）；
+- **从云端导入**：读取该键，更新设置页并保存到本地配置；
+- 每个账号只保留一个有效的插件令牌，重复登录会自动作废旧令牌；
+- 云端只保存这三个字段 + 更新时间，不保存令牌。
+
+### 前置条件
+
+会员站点需部署 0.3.0 版（含 `plugin_authorizations` 表，迁移 `2026_10_21_000006`），
+并确保 DSH 是**本机访问**（`http://127.0.0.1:<port>`）；若通过局域网 IP 打开 DSH，回调地址校验会拒绝。
+
+### 排查
+
+| 现象 | 处理 |
+|---|---|
+| 点登录没有反应 | 宿主通过 subprocess 调 ShellExecute（rundll32）/open/xdg-open 打开系统浏览器；若仍未打开，用界面上的「手动打开授权页」链接，或确认默认浏览器可用 |
+| 授权页提示「回调地址不合法」 | DSH 不是通过 127.0.0.1/localhost 打开的 |
+| 授权成功但设置页仍显示未登录 | 等待 1.5 秒轮询；确认 `/auth/status` 可访问 |
+| 同步失败 401 | 令牌已过期/被吊销，重新登录会员 |
 
 ---
 
@@ -488,7 +558,7 @@ pnpm test         # pretest: build + build:tests，随后跑 tests-dist/*.spec.j
 pnpm pack         # 打 tarball（prepack 自动 build）
 ```
 
-测试覆盖 **128 个用例**：
+测试覆盖 **131 个用例**：
 
 | 文件 | 用例数 | 覆盖内容 |
 |---|---|---|

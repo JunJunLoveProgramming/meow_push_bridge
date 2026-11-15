@@ -119,7 +119,7 @@ test('设置页用户清空昵称 → 不报校验错（昵称判定交给运行
 
 // ─────────────── 2. 表单字段元数据 ───────────────
 
-test('JSON Schema 投影只含 nickname 一个可编辑字段与中文说明', () => {
+test('JSON Schema 投影只含昵称字段，且有中文说明', () => {
   const shape = toRootSchema(Config)
   const branch = shape.anyOf?.[0]
   assert.ok(branch !== undefined, '顶层应是 anyOf[id-targeted, loaderExpression] 形状')
@@ -173,7 +173,7 @@ test('节点形状：type 是数据类型（不是自定义标识），dict/meta
     dict: Record<string, { type: string; meta: { volatile?: boolean } }>
   }
   assert.equal(config.type, 'object', "type 必须是 'object'：占用它会让 volatileForm 与 redact 都失效")
-  assert.equal(config.meta.volatile, true, '根节点需标记 volatile')
+  assert.notEqual(config.meta.volatile, true, '根节点不标记 volatile：改为逐字段标记，避免宿主报 fixed path 错误')
   assert.deepEqual(Object.keys(config.dict).sort(), ['nickname'])
   assert.equal(config.dict['nickname']?.type, 'string')
   for (const [key, child] of Object.entries(config.dict)) {

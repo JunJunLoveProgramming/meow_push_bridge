@@ -14,6 +14,7 @@
  */
 
 import { registerAutoPush, type AutoPushContext } from './auto-push.js'
+import { getEffectiveTheme, registerMemberRoutes } from './member-auth.js'
 import {
   ConfigError,
   DEFAULT_API_BASE,
@@ -64,10 +65,8 @@ export const Config = SchemaBuilder.object({
     .description(
       '必填：你的 MeoW 用户昵称（对应推送地址第一段；官方文档：昵称不允许包含斜杠）',
     )
-    // .volatile() 是设置页出现表单的硬性要求：dsh-settings 的 volatileForm()
-    // 会剪掉所有未标 volatile 的字段，全被剪掉就等于设置页里看不到本插件。
     .volatile(),
-}).volatile()
+})
 
 /** 插件 ID / Cordis 插件名（与 npm 包名、仓库名保持全局统一） */
 export const name = 'meow-push-bridge'
@@ -287,38 +286,54 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
     return
   }
 
+  // ── 3. 会员授权 / 主题同步路由（即使还没填昵称也要可用）──────────
+  try {
+    registerMemberRoutes(ctx, (level, message) => log(ctx, level, message))
+  } catch (error) {
+    log(ctx, 'warn', `会员模块初始化失败（不影响推送）：${String(error)}`)
+  }
+
   // ── 4. 统一的发送函数（工具与自动推送共用）────────────────────────
   // 请求细节全部固化：GET + text + HTTPS + 10s 超时（见 config.ts 的 FIXED_REQUEST）。
   // 用户只需要配置昵称。
-  const sendPush = (
+  const sendPush = async (
     title: string,
     message: string,
     url?: string,
     signal?: AbortSignal,
+    imgUrl?: string,
   ): Promise<PushOutcome> => {
+    // 主题只从宿主会员存储读取；未登录固定默认（category=dsh插件），
+    // 绝不读取 profile，避免非会员手改配置绕过会员限制。
+    const theme = await getEffectiveTheme(ctx)
+    const effectiveTitle = title.trim() !== '' ? title.trim() : theme.title !== '' ? theme.title : DEFAULT_TITLE
+    const effectiveImg = imgUrl !== undefined && imgUrl !== '' ? imgUrl : theme.imgUrl !== '' ? theme.imgUrl : undefined
+
     // 文档限流保护：与上次成功发送保持至少 MIN_SEND_INTERVAL_MS 间隔
     const wait = remainingGlobalWindow(lastSendAt, MIN_SEND_INTERVAL_MS)
-    return (wait > 0 ? sleep(wait) : Promise.resolve()).then(() =>
-      pushToMeow(
-        {
-          nickname: config.nickname,
-          title,
-          message,
-          ...(url === undefined || url === '' ? {} : { url }),
-          msgType: FIXED_REQUEST.msgType,
-          htmlHeight: FIXED_REQUEST.htmlHeight,
-        },
-        {
-          apiBase: FIXED_REQUEST.apiBase,
-          method: FIXED_REQUEST.method,
-          timeout: FIXED_REQUEST.timeout,
-          ...(signal === undefined ? {} : { signal }),
-        },
-      ),
-    ).then((outcome) => {
-      if (outcome.ok) lastSendAt = Date.now()
-      return outcome
-    })
+    if (wait > 0) await sleep(wait)
+
+    const outcome = await pushToMeow(
+      {
+        nickname: config.nickname,
+        title: effectiveTitle,
+        message,
+        ...(url === undefined || url === '' ? {} : { url }),
+        ...(effectiveImg === undefined ? {} : { imgUrl: effectiveImg }),
+        category: theme.category,
+        msgType: FIXED_REQUEST.msgType,
+        htmlHeight: FIXED_REQUEST.htmlHeight,
+      },
+      {
+        apiBase: FIXED_REQUEST.apiBase,
+        method: FIXED_REQUEST.method,
+        timeout: FIXED_REQUEST.timeout,
+        ...(signal === undefined ? {} : { signal }),
+      },
+    )
+
+    if (outcome.ok) lastSendAt = Date.now()
+    return outcome
   }
 
   // ── 5. 注册工具 ─────────────────────────────────────────────────
@@ -371,7 +386,7 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
       const title =
         typeof args?.title === 'string' && args.title.trim() !== ''
           ? args.title.trim()
-          : DEFAULT_TITLE
+          : ''
       const url = typeof args?.url === 'string' && args.url.trim() !== '' ? args.url.trim() : undefined
       const argImgUrl =
         typeof args?.imgUrl === 'string' && args.imgUrl.trim() !== '' ? args.imgUrl.trim() : undefined
@@ -383,26 +398,7 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
       }
 
       // (4) 发出请求（sendPush 内部已做文档限流的最小间隔保护）
-      const outcome =
-        argImgUrl === undefined
-          ? await sendPush(title, message, url, exec.signal)
-          : await pushToMeow(
-              {
-                nickname: config.nickname,
-                title,
-                message,
-                ...(url === undefined ? {} : { url }),
-                imgUrl: argImgUrl,
-                msgType: FIXED_REQUEST.msgType,
-                htmlHeight: FIXED_REQUEST.htmlHeight,
-              },
-              {
-                apiBase: FIXED_REQUEST.apiBase,
-                method: FIXED_REQUEST.method,
-                timeout: FIXED_REQUEST.timeout,
-                signal: exec.signal,
-              },
-            )
+      const outcome = await sendPush(title, message, url, exec.signal, argImgUrl)
 
       // (5) 仅成功时记账，失败允许立即重试
       if (outcome.ok) {
@@ -488,8 +484,8 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
           (candidate.snapshotEvents as () => readonly unknown[]).call(live),
       }
     },
-    send: async (title, message) => {
-      const outcome = await sendPush(title, message)
+    send: async (_title, message) => {
+      const outcome = await sendPush('', message)
       if (outcome.ok) lastPushAt.set('global', Date.now())
       return outcome
     },

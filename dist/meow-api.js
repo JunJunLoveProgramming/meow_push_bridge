@@ -93,6 +93,19 @@ export function normalizeHtmlHeight(value) {
         return DEFAULT_HTML_HEIGHT;
     return Math.min(MAX_HTML_HEIGHT, Math.max(MIN_HTML_HEIGHT, Math.trunc(parsed)));
 }
+/** 归一化自定义分类：去空白；空或超长/含控制字符时返回 undefined（不发送非法参数） */
+export function normalizePushCategory(value) {
+    if (typeof value !== 'string')
+        return undefined;
+    const text = value.trim();
+    if (text === '')
+        return undefined;
+    if ([...text].length > 10)
+        return undefined;
+    if (/[\u0000-\u001F\u007F]/u.test(text))
+        return undefined;
+    return text;
+}
 /** 构造 GET 查询串：msgType / htmlHeight 属请求参数（文档「通用说明」） */
 function buildParamQuery(request) {
     const query = [];
@@ -100,6 +113,9 @@ function buildParamQuery(request) {
         query.push(`url=${encodeURIComponent(request.url.trim())}`);
     if (isFilled(request.imgUrl))
         query.push(`imgUrl=${encodeURIComponent(request.imgUrl.trim())}`);
+    const category = normalizePushCategory(request.category);
+    if (category !== undefined)
+        query.push(`category=${encodeURIComponent(category)}`);
     const msgType = normalizeMsgType(request.msgType);
     query.push(`msgType=${msgType}`);
     if (msgType === 'html')
@@ -138,6 +154,9 @@ export function buildMeowBody(request) {
         body['url'] = request.url.trim();
     if (isFilled(request.imgUrl))
         body['imgUrl'] = request.imgUrl.trim();
+    const category = normalizePushCategory(request.category);
+    if (category !== undefined)
+        body['category'] = category;
     return body;
 }
 /**

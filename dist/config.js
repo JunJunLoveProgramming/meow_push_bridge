@@ -71,7 +71,10 @@ const REMOVED_KEYS = [
     'pushMode',
     'msgType',
     'htmlHeight',
+    // 主题不再写入 profile（会员数据存放在宿主安全存储与云端）
+    'title',
     'imgUrl',
+    'category',
 ];
 /**
  * 校验并归一化插件配置。
@@ -101,6 +104,13 @@ export function resolveConfig(raw, warn) {
     if (stillPresent.length > 0) {
         warn?.(`配置中的 ${stillPresent.join(' / ')} 已不再是可配置项（插件已按官方推荐值固化）：` +
             '这些值会被忽略，可以从配置文件中删除。');
+    }
+    // 会员主题（title / imgUrl / category）不再从 profile 读取：
+    // 它们由会员登录后的宿主存储与云端提供，避免非会员手改配置绕过会员限制。
+    for (const key of ['title', 'imgUrl', 'category']) {
+        if (table[key] !== undefined) {
+            warn?.(`配置里的 ${key} 已不再生效：主题请在「喵桥」设置页登录会员后填写。`);
+        }
     }
     return { nickname };
 }
