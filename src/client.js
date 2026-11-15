@@ -41,7 +41,34 @@ window.__ModuleLoader__.load({
       intro: '配置完成后，Agent 可以调用 meow_push_bridge 工具把通知推送到你的鸿蒙手机。',
       nickname: 'MeoW 昵称',
       nicknameHint: '必填。对应推送地址 https://api.chuckfang.com/{昵称}/… 的第一段。官方文档：昵称不允许包含斜杠。留空则不会注册推送工具。',
-      fixedNote: '其余请求细节（HTTPS 地址、GET 方法、10 秒超时、纯文本格式、每轮自动推送）已按官方推荐值固化，无需配置。',
+      memberTitle: '会员主题',
+      memberIntro: '主题设置是会员功能：登录后可自定义 MeoW 通知标题与图标 URL，并同步到云端。',
+      loginMember: '登录会员',
+      loggingIn: '等待浏览器授权…',
+      openingBrowser: '正在打开浏览器…',
+      loginHint: '将打开浏览器，请登录会员账号并授权；完成后本页会自动更新。',
+      loginTimeout: '等待授权超时，请重新点击「登录会员」。',
+      popupBlocked: '浏览器拦截了授权窗口：请允许本站弹窗后重试，或直接在浏览器打开会员站点登录。',
+      manualOpenHint: '未能自动打开浏览器，请点击下方「手动打开授权页」。',
+      openAuthPage: '手动打开授权页',
+      logout: '取消授权',
+      loggedInAs: '已登录',
+      notMember: '未登录会员',
+      themeTitle: 'MeoW 通知标题',
+      themeTitleHint: '会员主题。留空时使用默认标题「MeoW Push Bridge」。',
+      themeIcon: '自定义图标 URL',
+      themeIconHint: '会员主题。官方建议 216×216 PNG；留空则不附加图标。',
+      themeCategory: '自定义分类',
+      themeCategoryHint: '会员主题。默认「dsh插件」，最多 10 个字；非会员固定为 dsh插件。',
+      syncUpload: '同步到云端',
+      syncDownload: '从云端导入',
+      syncing: '同步中…',
+      syncUploaded: '主题已同步到云端。',
+      syncImported: '已从云端导入主题。',
+      syncEmpty: '云端还没有保存过主题。',
+      memberOnly: '登录会员后才能显示主题设置。',
+      authFailed: '会员登录失败：',
+      fixedNote: '其余请求细节（HTTPS 地址、POST 方法、10 秒超时、纯文本格式、每轮自动推送）已按官方推荐值固化，无需配置。',
       save: '保存',
       saving: '保存中…',
       saved: '已保存，插件已热应用。',
@@ -58,7 +85,34 @@ window.__ModuleLoader__.load({
       intro: 'Once configured, the Agent can push notifications to your HarmonyOS phone via meow_push_bridge.',
       nickname: 'MeoW nickname',
       nicknameHint: 'Required. The first path segment of https://api.chuckfang.com/{nickname}/… The spec forbids slashes in a nickname. Leave it empty and the tool is not registered.',
-      fixedNote: 'All other request details (HTTPS base, GET, 10s timeout, plain text, auto-push every reply) are fixed to the spec-recommended values.',
+      memberTitle: 'Member theme',
+      memberIntro: 'Theme settings are a member feature: sign in to set a notification title and icon URL, and sync them to the cloud.',
+      loginMember: 'Sign in as member',
+      loggingIn: 'Waiting for browser authorization…',
+      openingBrowser: 'Opening the browser…',
+      loginHint: 'A browser tab will open; sign in and authorize, then this page updates automatically.',
+      loginTimeout: 'Timed out waiting for authorization. Click “Sign in as member” again.',
+      popupBlocked: 'The browser blocked the authorization tab. Allow pop-ups for this site and retry.',
+      manualOpenHint: 'The browser could not be opened automatically; use “Open authorization page”.',
+      openAuthPage: 'Open authorization page',
+      logout: 'Revoke authorization',
+      loggedInAs: 'Signed in as',
+      notMember: 'Not signed in',
+      themeTitle: 'MeoW notification title',
+      themeTitleHint: 'Member theme. Empty uses the default title "MeoW Push Bridge".',
+      themeIcon: 'Custom icon URL',
+      themeIconHint: 'Member theme. 216×216 PNG recommended; empty adds no icon.',
+      themeCategory: 'Custom category',
+      themeCategoryHint: 'Member theme. Defaults to “dsh插件”, max 10 characters; fixed for non-members.',
+      syncUpload: 'Sync to cloud',
+      syncDownload: 'Import from cloud',
+      syncing: 'Syncing…',
+      syncUploaded: 'Theme synced to the cloud.',
+      syncImported: 'Theme imported from the cloud.',
+      syncEmpty: 'No theme saved in the cloud yet.',
+      memberOnly: 'Theme settings appear after you sign in as a member.',
+      authFailed: 'Member sign-in failed: ',
+      fixedNote: 'All other request details (HTTPS base, POST, 10s timeout, plain text, auto-push every reply) are fixed to the spec-recommended values.',
       save: 'Save',
       saving: 'Saving…',
       saved: 'Saved; the plugin is applied live.',
@@ -70,13 +124,37 @@ window.__ModuleLoader__.load({
       qqGroup: 'QQ group: 1051489523',
     }
 
-    /** 字段元数据：面板上按这个顺序渲染（刻意只保留昵称一项） */
+    /** 配置字段：只有昵称写入 profile */
     const FIELDS = [{ key: 'nickname', kind: 'string', label: 'nickname', hint: 'nicknameHint' }]
+
+    /** 会员主题字段：不写入 profile，登录后由宿主存储/云端提供 */
+    const THEME_FIELDS = [
+      { key: 'title', kind: 'string', label: 'themeTitle', hint: 'themeTitleHint' },
+      { key: 'imgUrl', kind: 'string', label: 'themeIcon', hint: 'themeIconHint' },
+      { key: 'category', kind: 'string', label: 'themeCategory', hint: 'themeCategoryHint' },
+    ]
 
     /** 判断某个命名空间是否属于本插件（容忍 id 命名风格差异） */
     function isMeoWNamespace(ns) {
       const value = String(ns ?? '')
       return value === 'meow-push-bridge' || value === 'meow_push_bridge' || value.indexOf('meow') >= 0
+    }
+
+    /**
+     * 读取 JSON 响应。
+     * 路由未注册时宿主会返回空 404/405，直接 response.json() 会抛
+     * "Unexpected end of JSON input"，这里换成可理解的错误。
+     */
+    async function readJson(response, label) {
+      const text = await response.text()
+      if (text === '') {
+        throw new Error(label + '接口无响应（HTTP ' + response.status + '）：插件可能尚未加载，请重启 DSH 后重试')
+      }
+      try {
+        return JSON.parse(text)
+      } catch (error) {
+        throw new Error(label + '接口返回了非 JSON（HTTP ' + response.status + '）：' + text.slice(0, 80))
+      }
     }
 
     /**
@@ -93,6 +171,198 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = React.useState({})
       const [revision, setRevision] = React.useState(undefined)
       const [busy, setBusy] = React.useState(false)
+      const [member, setMember] = React.useState({ phase: 'loading', authorized: false, account: null, message: '' })
+      const [syncBusy, setSyncBusy] = React.useState('')
+      const [memberNote, setMemberNote] = React.useState('')
+      const [memberError, setMemberError] = React.useState('')
+
+      const refreshMember = React.useCallback(async () => {
+        try {
+          const response = await fetch('/meow-push-bridge-api/auth/status', { headers: { 'X-MPB-Client': '1' } })
+          const data = await readJson(response, '会员')
+          if (data && data.authorized) {
+            setMember({ phase: 'authorized', authorized: true, account: data.account || null, message: '' })
+          } else {
+            // 轮询期间保持「等待授权」状态，不要一刷新就把提示抹掉
+            setMember((previous) =>
+              previous.phase === 'pending' || previous.phase === 'starting'
+                ? previous
+                : { phase: 'anonymous', authorized: false, account: null, message: '' },
+            )
+          }
+        } catch (error) {
+          setMember({ phase: 'error', authorized: false, account: null, message: String((error && error.message) || error) })
+        }
+      }, [])
+
+      React.useEffect(() => {
+        refreshMember()
+      }, [refreshMember])
+
+      React.useEffect(() => {
+        if (!member.authorized) return undefined
+        let cancelled = false
+        fetch('/meow-push-bridge-api/theme', { headers: { 'X-MPB-Client': '1' } })
+          .then((response) => readJson(response, '会员'))
+          .then((data) => {
+            if (cancelled) return
+            const theme = data && data.theme
+            if (theme === undefined || theme === null) return
+            setDraft((previous) => ({
+              ...previous,
+              title: typeof theme.title === 'string' ? theme.title : '',
+              imgUrl: typeof theme.imgUrl === 'string' ? theme.imgUrl : '',
+              category:
+                typeof theme.category === 'string' && theme.category !== ''
+                  ? theme.category
+                  : 'dsh插件',
+            }))
+          })
+          .catch(() => {})
+        return () => {
+          cancelled = true
+        }
+      }, [member.authorized])
+
+      React.useEffect(() => {
+        if (member.phase !== 'pending') return undefined
+        let tries = 0
+        const timer = setInterval(() => {
+          tries += 1
+          if (tries > 200) {
+            clearInterval(timer)
+            setMember((previous) => ({ ...previous, phase: 'error', message: t('loginTimeout') }))
+            return
+          }
+          refreshMember()
+        }, 1500)
+        return () => clearInterval(timer)
+      }, [member.phase, refreshMember])
+
+      // 由宿主拉起系统浏览器；若宿主失败或 8 秒无响应，自动跳转兜底。
+      const startLogin = async () => {
+        setMemberNote('')
+        setMember({ phase: 'starting', authorized: false, account: null, message: '', loginUrl: null })
+        const back = encodeURIComponent(window.location.href)
+        const fallback = '/meow-push-bridge-api/auth/start?sameTab=1&return=' + back
+        try {
+          const response = await fetch('/meow-push-bridge-api/auth/start', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1' },
+            signal: AbortSignal.timeout(8000),
+          })
+          const data = await readJson(response, '会员')
+          if (data && data.authorized) {
+            setMember({ phase: 'authorized', authorized: true, account: data.account || null, message: '', loginUrl: null })
+            return
+          }
+          if (!data || typeof data.url !== 'string' || data.opened === false) {
+            window.location.href = fallback
+            return
+          }
+          setMember({
+            phase: 'pending',
+            authorized: false,
+            account: null,
+            message: t('loginHint'),
+            loginUrl: data.url,
+          })
+        } catch (error) {
+          window.location.href = fallback
+          setMember({
+            phase: 'error',
+            authorized: false,
+            account: null,
+            message: String((error && error.message) || error),
+            loginUrl: null,
+          })
+        }
+      }
+
+      const logoutMember = async () => {
+        setSyncBusy('logout')
+        setMemberNote('')
+        try {
+          await fetch('/meow-push-bridge-api/auth/logout', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1' },
+          })
+          setMember({ phase: 'anonymous', authorized: false, account: null, message: '' })
+          setDraft((previous) => ({ ...previous, title: '', imgUrl: '', category: 'dsh插件' }))
+          setMemberNote('已取消授权，主题恢复默认')
+        } catch (error) {
+          setState({ phase: 'error', message: String((error && error.message) || error) })
+        } finally {
+          setSyncBusy('')
+        }
+      }
+
+      const syncUpload = async () => {
+        setSyncBusy('upload')
+        setMemberNote('')
+        setMemberError('')
+        if (typeof draft.nickname !== 'string' || draft.nickname.trim() === '') {
+          setSyncBusy('')
+          setMemberError('请先填写「MeoW 昵称」再同步到云端')
+          return
+        }
+        try {
+          const response = await fetch('/meow-push-bridge-api/sync/upload', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nickname: draft.nickname || '',
+              title: draft.title || '',
+              imgUrl: draft.imgUrl || '',
+              category: draft.category || '',
+            }),
+          })
+          const data = await readJson(response, '会员')
+          if (data && data.ok) setMemberNote(t('syncUploaded'))
+          else setMemberError((data && data.error) || '同步失败')
+        } catch (error) {
+          setMemberError(String((error && error.message) || error))
+        } finally {
+          setSyncBusy('')
+        }
+      }
+
+      const syncDownload = async () => {
+        setSyncBusy('download')
+        setMemberNote('')
+        setMemberError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/sync/download', {
+            headers: { 'X-MPB-Client': '1' },
+          })
+          const data = await readJson(response, '会员')
+          if (!data || !data.ok || !data.theme) {
+            setMemberError((data && data.error) || t('syncEmpty'))
+            return
+          }
+          const theme = data.theme
+          setDraft((previous) => ({
+            ...previous,
+            nickname: theme.nickname || previous.nickname,
+            title: theme.title || '',
+            imgUrl: theme.imgUrl || '',
+            category:
+              typeof theme.category === 'string' && theme.category !== ''
+                ? theme.category
+                : 'dsh插件',
+          }))
+
+          // 昵称属于 profile 配置；主题只存宿主/云端，不写 profile
+          if (typeof theme.nickname === 'string' && theme.nickname !== '' && revision !== undefined) {
+            await updateSettings({ nickname: theme.nickname }, revision)
+          }
+          setMemberNote(t('syncImported'))
+        } catch (error) {
+          setMemberError(String((error && error.message) || error))
+        } finally {
+          setSyncBusy('')
+        }
+      }
 
       const load = React.useCallback(() => {
         let cancelled = false
@@ -135,20 +405,65 @@ window.__ModuleLoader__.load({
         return typeof current === 'string' && current.length > 0
       })
 
-      const save = () => {
+      /**
+       * 保存配置；遇到 revision 冲突时自动重新读取版本并重试一次。
+       * （多个设置页/热重载会推进 revision，旧 revision 会被宿主拒绝）
+       */
+      const updateSettings = React.useCallback(
+        async (patch, expectedRevision) => {
+          let result = await actions.update(patch, expectedRevision)
+
+          const failed = !result || result.ok !== true
+          const code = failed && result && result.error ? String(result.error.code || '') : ''
+          const message = failed && result && result.error ? String(result.error.message || '') : ''
+          const conflict =
+            code.indexOf('conflict') >= 0 || message.indexOf('changed since it was read') >= 0
+
+          if (!failed || !conflict) return result
+
+          const described = await actions.describe()
+          if (!described || described.ok !== true) return result
+          const view = ((described.value && described.value.namespaces) || []).find((row) =>
+            isMeoWNamespace(row.ns),
+          )
+          if (view === undefined || view.revision === undefined) return result
+
+          setRevision(view.revision)
+          result = await actions.update(patch, view.revision)
+          return result
+        },
+        [actions],
+      )
+
+      const save = async () => {
         setBusy(true)
         setState({ phase: 'saving', message: '' })
-        const patch = {}
-        // 只提交非空字段：空字符串表示「不改这一项」，避免把默认值覆盖成空
-        for (const field of FIELDS) {
-          const raw = draft[field.key]
-          if (typeof raw !== 'string' || raw.length === 0) continue
-          patch[field.key] = field.kind === 'number' ? Number(raw) : raw
-        }
-        actions
-          .update(patch, revision)
-          .then((result) => {
-            setBusy(false)
+        try {
+          // 主题写入宿主存储（不写 profile），昵称仍写配置
+          if (member.authorized) {
+            const themeResponse = await fetch('/meow-push-bridge-api/theme', {
+              method: 'POST',
+              headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: draft.title || '',
+                imgUrl: draft.imgUrl || '',
+                category: draft.category || '',
+              }),
+            })
+            const themeData = await readJson(themeResponse, '会员')
+            if (!themeData || themeData.ok !== true) {
+              setState({ phase: 'error', message: (themeData && themeData.error) || '主题保存失败' })
+              return
+            }
+          }
+
+          const patch = {}
+          if (typeof draft.nickname === 'string' && draft.nickname.length > 0) {
+            patch.nickname = draft.nickname
+          }
+
+          if (Object.keys(patch).length > 0) {
+            const result = await updateSettings(patch, revision)
             if (!result || result.ok !== true) {
               setState({
                 phase: 'error',
@@ -158,12 +473,14 @@ window.__ModuleLoader__.load({
             }
             const view = result.value
             if (view !== undefined && view.revision !== undefined) setRevision(view.revision)
-            setState({ phase: 'saved', message: '' })
-          })
-          .catch((error) => {
-            setBusy(false)
-            setState({ phase: 'error', message: String((error && error.message) || error) })
-          })
+          }
+
+          setState({ phase: 'saved', message: '' })
+        } catch (error) {
+          setState({ phase: 'error', message: String((error && error.message) || error) })
+        } finally {
+          setBusy(false)
+        }
       }
 
       /** 统一的字段行：标题 + 说明 + 输入框 */
@@ -221,6 +538,7 @@ window.__ModuleLoader__.load({
                 id: `meow-${field.key}`,
                 type: field.kind === 'number' ? 'number' : 'text',
                 value: draft[field.key] ?? '',
+                maxLength: field.key === 'category' ? 10 : undefined,
                 disabled: busy,
                 style: {
                   padding: '6px 10px',
@@ -236,6 +554,210 @@ window.__ModuleLoader__.load({
                   setDraft((previous) => ({ ...previous, [field.key]: value }))
                 },
               }),
+        )
+      }
+
+      const memberButton = (id, label, onClick, disabled) =>
+        React.createElement(
+          'button',
+          {
+            key: id,
+            type: 'button',
+            disabled: disabled === true,
+            onClick,
+            style: {
+              padding: '5px 12px',
+              fontSize: '12px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+              background: 'var(--dsw-alias-bg-primary, #fff)',
+              color: 'var(--dsw-alias-label-primary, #1f1f1f)',
+              cursor: disabled === true ? 'default' : 'pointer',
+            },
+          },
+          label,
+        )
+
+      // 普通链接：新标签打开，宿主 302 到站点，不触发弹窗拦截
+      const memberLink = (label, href, onClick) =>
+        React.createElement(
+          'a',
+          {
+            key: label,
+            href,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            onClick,
+            style: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '5px 12px',
+              fontSize: '12px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+              background: 'var(--dsw-alias-bg-primary, #fff)',
+              color: 'var(--dsw-alias-label-primary, #1f1f1f)',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            },
+          },
+          label,
+        )
+
+      // 同页跳转链接：即使 JS 事件失效，浏览器默认导航也会生效
+      const memberNavLink = (label, href) =>
+        React.createElement(
+          'a',
+          {
+            key: label,
+            href,
+            style: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '5px 12px',
+              fontSize: '12px',
+              borderRadius: '6px',
+              border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+              background: 'var(--dsw-alias-bg-primary, #fff)',
+              color: 'var(--dsw-alias-label-primary, #1f1f1f)',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            },
+          },
+          label,
+        )
+
+      const renderMemberBlock = () => {
+        const rowStyle = { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }
+        const hintStyle = {
+          fontSize: '12px',
+          color: 'var(--dsw-alias-label-tertiary, #8c8c8c)',
+          margin: 0,
+          lineHeight: 1.6,
+        }
+        const accountName =
+          member.account !== null && member.account !== undefined && typeof member.account.username === 'string'
+            ? member.account.username
+            : ''
+
+        const parts = [
+          React.createElement(
+            'div',
+            { key: 'head', style: rowStyle },
+            React.createElement('strong', { style: { fontSize: '13px' } }, t('memberTitle')),
+            React.createElement(
+              'span',
+              { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+              member.authorized ? `${t('loggedInAs')} ${accountName}` : t('notMember'),
+            ),
+          ),
+        ]
+
+        if (!member.authorized) {
+          parts.push(React.createElement('p', { key: 'intro', style: hintStyle }, t('memberIntro')))
+        }
+        if (member.phase === 'starting') {
+          parts.push(
+            React.createElement(
+              'p',
+              { key: 'starting', style: { ...hintStyle, color: 'var(--dsw-alias-state-info-primary, #1677ff)' } },
+              t('openingBrowser'),
+            ),
+          )
+        }
+        if (member.phase === 'pending') {
+          parts.push(
+            React.createElement(
+              'p',
+              { key: 'pending', style: { ...hintStyle, color: 'var(--dsw-alias-state-info-primary, #1677ff)' } },
+              t('loggingIn'),
+            ),
+          )
+        }
+        if (member.phase === 'error') {
+          parts.push(
+            React.createElement(
+              'p',
+              { key: 'error', style: { ...hintStyle, color: 'var(--dsw-alias-state-error-primary, #d4380d)' } },
+              `${t('authFailed')}${member.message}`,
+            ),
+          )
+        }
+        if (memberNote !== '') {
+          parts.push(
+            React.createElement(
+              'p',
+              { key: 'note', style: { ...hintStyle, color: 'var(--dsw-alias-state-success-primary, #389e0d)' } },
+              memberNote,
+            ),
+          )
+        }
+        if (memberError !== '') {
+          parts.push(
+            React.createElement(
+              'p',
+              { key: 'member-error', style: { ...hintStyle, color: 'var(--dsw-alias-state-error-primary, #d4380d)' } },
+              memberError,
+            ),
+          )
+        }
+
+        const buttons = []
+        if (!member.authorized) {
+          buttons.push(
+            memberButton(
+              'login',
+              t('loginMember'),
+              startLogin,
+              member.phase === 'starting' || member.phase === 'pending',
+            ),
+          )
+          if (typeof member.loginUrl === 'string' && member.loginUrl !== '') {
+            buttons.push(memberLink(t('openAuthPage'), member.loginUrl))
+          }
+        } else {
+          buttons.push(
+            memberButton(
+              'sync-upload',
+              syncBusy === 'upload' ? t('syncing') : t('syncUpload'),
+              syncUpload,
+              syncBusy !== '',
+            ),
+          )
+          buttons.push(
+            memberButton(
+              'sync-download',
+              syncBusy === 'download' ? t('syncing') : t('syncDownload'),
+              syncDownload,
+              syncBusy !== '',
+            ),
+          )
+          buttons.push(
+            memberButton(
+              'logout',
+              syncBusy === 'logout' ? t('syncing') : t('logout'),
+              logoutMember,
+              syncBusy !== '',
+            ),
+          )
+        }
+        parts.push(React.createElement('div', { key: 'buttons', style: rowStyle }, buttons))
+
+        return React.createElement(
+          'div',
+          {
+            key: 'member',
+            style: {
+              border: '1px dashed var(--dsw-alias-border-l2, #d9d9d9)',
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              maxWidth: '620px',
+            },
+          },
+          parts,
         )
       }
 
@@ -258,6 +780,16 @@ window.__ModuleLoader__.load({
             FIELDS.map(renderField),
           ),
         )
+        children.push(renderMemberBlock())
+        if (member.authorized) {
+          children.push(
+            React.createElement(
+              'div',
+              { key: 'theme-fields', style: { display: 'flex', flexDirection: 'column', gap: '14px' } },
+              THEME_FIELDS.map(renderField),
+            ),
+          )
+        }
         children.push(
           React.createElement(
             'div',

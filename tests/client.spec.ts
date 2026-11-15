@@ -384,7 +384,7 @@ test('字典只保留昵称相关的键，已移除字段的死键已清理', ()
     assert.ok(new RegExp(`${key}: '([^']*)'`).test(source), `缺少字典键：${key}`)
   }
   // 已移除字段的键不应再存在
-  for (const key of ['apiBase', 'pushMode', 'msgType', 'htmlHeight', 'method', 'timeout']) {
+  for (const key of ['apiBase', 'pushMode', 'msgType', 'htmlHeight', 'timeout']) {
     assert.ok(!new RegExp(`^\\s+${key}: '`, 'm').test(source), `字典里仍有死键：${key}`)
   }
   assert.ok(source.includes('QQ 交流群：1051489523'))

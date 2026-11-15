@@ -35,7 +35,7 @@ export const MEOW_NICKNAME_REQUIRED_MESSAGE =
 
 /**
  * 插件配置接口（对应 cordis.patch.yml 中该 entry 的 config 段）。
- * 只有一个必填字段。
+ * nickname 必填；title / imgUrl 属于会员主题（0.3.0 起）。
  */
 export interface MeoWConfig {
   /** 必填：MeoW 用户昵称（官方文档：不允许包含斜杠），空值会导致插件拒绝注册工具 */
@@ -106,7 +106,10 @@ const REMOVED_KEYS = [
   'pushMode',
   'msgType',
   'htmlHeight',
+  // 主题不再写入 profile（会员数据存放在宿主安全存储与云端）
+  'title',
   'imgUrl',
+  'category',
 ] as const
 
 /**
@@ -145,6 +148,14 @@ export function resolveConfig(raw: unknown, warn?: WarnSink): ResolvedMeoWConfig
       `配置中的 ${stillPresent.join(' / ')} 已不再是可配置项（插件已按官方推荐值固化）：` +
         '这些值会被忽略，可以从配置文件中删除。',
     )
+  }
+
+  // 会员主题（title / imgUrl / category）不再从 profile 读取：
+  // 它们由会员登录后的宿主存储与云端提供，避免非会员手改配置绕过会员限制。
+  for (const key of ['title', 'imgUrl', 'category'] as const) {
+    if (table[key] !== undefined) {
+      warn?.(`配置里的 ${key} 已不再生效：主题请在「喵桥」设置页登录会员后填写。`)
+    }
   }
 
   return { nickname }

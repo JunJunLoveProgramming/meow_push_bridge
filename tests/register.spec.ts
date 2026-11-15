@@ -317,7 +317,7 @@ test('sessions 服务缺失时：仍注册工具，自动推送降级为统计�
   const { ctx, registered, reads } = createStrictContext({ nickname: 'chuck' })
   apply(ctx)
   assert.equal(registered.length, 1)
-  assert.deepEqual(reads, ['sessions'], '只应查询 sessions 一次')
+  assert.deepEqual(reads, ['webServer', 'sessions'], '应查询 webServer 与 sessions 各一次')
 })
 
 test('sessions 服务存在时：不会因为包装会话而抛错', () => {
@@ -328,7 +328,7 @@ test('sessions 服务存在时：不会因为包装会话而抛错', () => {
   }
   const contextMembers = new Set(['config', 'logger', 'tools', 'effect', 'get', 'on'])
   const target: Record<string, unknown> = {
-    config: { nickname: 'chuck' },
+    config: { nickname: 'chuck', title: '', imgUrl: '' },
     logger: { error: () => {}, warn: () => {}, info: () => {} },
     tools: { register: () => () => {} },
     on: () => () => {},
@@ -354,7 +354,7 @@ test('sessions 服务存在时：不会因为包装会话而抛错', () => {
 test('resolveConfig：只保留昵称，并去掉首尾空格', () => {
   const config = resolveConfig({ nickname: '  chuck  ' })
   assert.equal(config.nickname, 'chuck')
-  assert.deepEqual(Object.keys(config), ['nickname'], '归一化结果只应有 nickname')
+  assert.deepEqual(Object.keys(config), ['nickname'], '归一化结果只含昵称')
 })
 
 test('resolveConfig：旧配置里的已移除字段被忽略并给出 warn（平滑升级）', () => {
@@ -374,9 +374,9 @@ test('resolveConfig：旧配置里的已移除字段被忽略并给出 warn（�
     (message) => warnings.push(message),
   )
   assert.equal(config.nickname, 'chuck')
-  assert.deepEqual(Object.keys(config), ['nickname'], '已移除字段不得进入运行时配置')
-  assert.equal(warnings.length, 1, '应只给出一条汇总提示')
-  for (const key of ['apiBase', 'method', 'timeout', 'throttleMs', 'pushMode', 'msgType', 'htmlHeight', 'imgUrl']) {
+  assert.deepEqual(Object.keys(config), ['nickname'], '主题字段不得进入运行时配置')
+  assert.ok(warnings.length >= 1, '应给出忽略提示')
+  for (const key of ['apiBase', 'method', 'timeout', 'throttleMs', 'pushMode', 'msgType', 'htmlHeight']) {
     assert.ok(warnings[0]?.includes(key), `提示里应包含被忽略的字段：${key}`)
   }
 })

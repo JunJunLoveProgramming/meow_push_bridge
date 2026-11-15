@@ -13,6 +13,7 @@
  *   - 调用 src/meow-api.ts 的 pushToMeow 完成 URL 构造、超时与错误分类。
  */
 import { registerAutoPush } from './auto-push.js';
+import { getEffectiveTheme, registerMemberRoutes } from './member-auth.js';
 import { ConfigError, DEFAULT_API_BASE, FIXED_REQUEST, FIXED_THROTTLE_MS, MEOW_NICKNAME_REQUIRED_MESSAGE, resolveConfig, } from './config.js';
 import { DEFAULT_TITLE, formatOutcome, pushToMeow } from './meow-api.js';
 import { assertInvariants, createInvariants, registerInvariants } from './invariant.js';
@@ -50,10 +51,8 @@ export const MIN_SEND_INTERVAL_MS = 3_000;
 export const Config = SchemaBuilder.object({
     nickname: SchemaBuilder.string()
         .description('必填：你的 MeoW 用户昵称（对应推送地址第一段；官方文档：昵称不允许包含斜杠）')
-        // .volatile() 是设置页出现表单的硬性要求：dsh-settings 的 volatileForm()
-        // 会剪掉所有未标 volatile 的字段，全被剪掉就等于设置页里看不到本插件。
         .volatile(),
-}).volatile();
+});
 /** 插件 ID / Cordis 插件名（与 npm 包名、仓库名保持全局统一） */
 export const name = 'meow-push-bridge';
 /** 依赖 tools 服务：缺少时 Cordis 不会激活本插件（而非半激活） */
@@ -204,17 +203,33 @@ export function apply(ctx, injected) {
         log(ctx, 'error', `❌ 插件未启用：tools 服务不可用（请检查 inject: ['tools'] 是否生效）。`);
         return;
     }
+    // ── 3. 会员授权 / 主题同步路由（即使还没填昵称也要可用）──────────
+    try {
+        registerMemberRoutes(ctx, (level, message) => log(ctx, level, message));
+    }
+    catch (error) {
+        log(ctx, 'warn', `会员模块初始化失败（不影响推送）：${String(error)}`);
+    }
     // ── 4. 统一的发送函数（工具与自动推送共用）────────────────────────
     // 请求细节全部固化：GET + text + HTTPS + 10s 超时（见 config.ts 的 FIXED_REQUEST）。
     // 用户只需要配置昵称。
-    const sendPush = (title, message, url, signal) => {
+    const sendPush = async (title, message, url, signal, imgUrl) => {
+        // 主题只从宿主会员存储读取；未登录固定默认（category=dsh插件），
+        // 绝不读取 profile，避免非会员手改配置绕过会员限制。
+        const theme = await getEffectiveTheme(ctx);
+        const effectiveTitle = title.trim() !== '' ? title.trim() : theme.title !== '' ? theme.title : DEFAULT_TITLE;
+        const effectiveImg = imgUrl !== undefined && imgUrl !== '' ? imgUrl : theme.imgUrl !== '' ? theme.imgUrl : undefined;
         // 文档限流保护：与上次成功发送保持至少 MIN_SEND_INTERVAL_MS 间隔
         const wait = remainingGlobalWindow(lastSendAt, MIN_SEND_INTERVAL_MS);
-        return (wait > 0 ? sleep(wait) : Promise.resolve()).then(() => pushToMeow({
+        if (wait > 0)
+            await sleep(wait);
+        const outcome = await pushToMeow({
             nickname: config.nickname,
-            title,
+            title: effectiveTitle,
             message,
             ...(url === undefined || url === '' ? {} : { url }),
+            ...(effectiveImg === undefined ? {} : { imgUrl: effectiveImg }),
+            category: theme.category,
             msgType: FIXED_REQUEST.msgType,
             htmlHeight: FIXED_REQUEST.htmlHeight,
         }, {
@@ -222,11 +237,10 @@ export function apply(ctx, injected) {
             method: FIXED_REQUEST.method,
             timeout: FIXED_REQUEST.timeout,
             ...(signal === undefined ? {} : { signal }),
-        })).then((outcome) => {
-            if (outcome.ok)
-                lastSendAt = Date.now();
-            return outcome;
         });
+        if (outcome.ok)
+            lastSendAt = Date.now();
+        return outcome;
     };
     // ── 5. 注册工具 ─────────────────────────────────────────────────
     const meowTool = defineTool({
@@ -275,7 +289,7 @@ export function apply(ctx, injected) {
             }
             const title = typeof args?.title === 'string' && args.title.trim() !== ''
                 ? args.title.trim()
-                : DEFAULT_TITLE;
+                : '';
             const url = typeof args?.url === 'string' && args.url.trim() !== '' ? args.url.trim() : undefined;
             const argImgUrl = typeof args?.imgUrl === 'string' && args.imgUrl.trim() !== '' ? args.imgUrl.trim() : undefined;
             // (3) 节流：同一会话在固化窗口内不重复推送（间隔不可配置）
@@ -284,22 +298,7 @@ export function apply(ctx, injected) {
                 return `⚠️ 推送已节流：同一会话在 ${FIXED_THROTTLE_MS}ms 内只能推送一次，请 ${throttle.retryInMs}ms 后重试。`;
             }
             // (4) 发出请求（sendPush 内部已做文档限流的最小间隔保护）
-            const outcome = argImgUrl === undefined
-                ? await sendPush(title, message, url, exec.signal)
-                : await pushToMeow({
-                    nickname: config.nickname,
-                    title,
-                    message,
-                    ...(url === undefined ? {} : { url }),
-                    imgUrl: argImgUrl,
-                    msgType: FIXED_REQUEST.msgType,
-                    htmlHeight: FIXED_REQUEST.htmlHeight,
-                }, {
-                    apiBase: FIXED_REQUEST.apiBase,
-                    method: FIXED_REQUEST.method,
-                    timeout: FIXED_REQUEST.timeout,
-                    signal: exec.signal,
-                });
+            const outcome = await sendPush(title, message, url, exec.signal, argImgUrl);
             // (5) 仅成功时记账，失败允许立即重试
             if (outcome.ok) {
                 lastPushAt.set(throttleKeyOf(exec), Date.now());
@@ -383,8 +382,8 @@ export function apply(ctx, injected) {
                 snapshotEvents: () => candidate.snapshotEvents.call(live),
             };
         },
-        send: async (title, message) => {
-            const outcome = await sendPush(title, message);
+        send: async (_title, message) => {
+            const outcome = await sendPush('', message);
             if (outcome.ok)
                 lastPushAt.set('global', Date.now());
             return outcome;

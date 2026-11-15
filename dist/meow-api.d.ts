@@ -52,6 +52,8 @@ export interface PushRequest {
     url?: string;
     /** 通知图标 URL，可选（查询参数）；文档建议 216×216 PNG */
     imgUrl?: string;
+    /** 自定义分类名，可选；最多 10 个字，空表示不分类 */
+    category?: string;
     /** 消息显示类型：text（默认，纯文本）或 html（App 内渲染） */
     msgType?: MeoWMsgType;
     /** 仅 msgType=html 时生效，HTML 显示高度（像素），默认 200 */
@@ -129,6 +131,8 @@ export interface PushOptions {
 export declare function normalizeMsgType(value: unknown): MeoWMsgType;
 /** 夹取 htmlHeight；非法值回退默认 */
 export declare function normalizeHtmlHeight(value: unknown): number;
+/** 归一化自定义分类：去空白；空或超长/含控制字符时返回 undefined（不发送非法参数） */
+export declare function normalizePushCategory(value: unknown): string | undefined;
 /**
  * 拼接 MeoW 推送 URL（GET 形式）。
  *
