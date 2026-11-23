@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/meow-api.ts —— MeoW 推送接口封装
  *
  * 契约来源：官方文档 https://www.chuckfang.com/MeoW/api_doc.html （MeoW Push API v1）
@@ -29,7 +29,7 @@
 export const DEFAULT_API_BASE = 'https://api.chuckfang.com'
 
 /** 工具/自动推送未指定标题时的缺省标题 */
-export const DEFAULT_TITLE = 'MeoW Push Bridge'
+export const DEFAULT_TITLE = '骏骏消息中转'
 
 /** 文档规定的省略 title 时服务端使用的标题 */
 export const SPEC_DEFAULT_TITLE = 'MeoW'

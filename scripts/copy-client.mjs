@@ -25,8 +25,8 @@ if (!text.includes('window.__ModuleLoader__.load(')) {
   console.error('[copy-client] src/client.js 不是 __ModuleLoader__ 格式，DSH 会拒绝加载。')
   process.exit(1)
 }
-if (!text.includes("id: 'meow-push-bridge'")) {
-  console.error('[copy-client] src/client.js 的模块 id 必须是 meow-push-bridge。')
+if (!text.includes("id: 'dsh-junjun-transit'")) {
+  console.error('[copy-client] src/client.js 的模块 id 必须是 dsh-junjun-transit。')
   process.exit(1)
 }
 

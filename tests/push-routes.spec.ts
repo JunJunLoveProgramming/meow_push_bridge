@@ -83,7 +83,7 @@ test('POST /push/config：解析 JSON、保存并返回脱敏配置', async () =
   resetPushPreferencesState()
   const { host, handlers } = makeHost()
   registerPushRoutes(host, () => {})
-  const handler = handlers.get('/meow-push-bridge-api/push/config')
+  const handler = handlers.get('/dsh-junjun-transit-api/push/config')
   assert.ok(handler !== undefined)
   if (handler === undefined) throw new Error('route not registered')
 
@@ -100,7 +100,7 @@ test('POST /push/config：解析 JSON、保存并返回脱敏配置', async () =
           username: 'bot',
           password: 'secret',
           fromEmail: 'bot@example.com',
-          fromName: '喵桥',
+          fromName: '骏骏通知中转',
           toEmail: 'user@example.com',
         },
       }),
@@ -131,7 +131,7 @@ test('POST /push/test（meow）：不抛错，返回 JSON', async () => {
   const { host, handlers } = makeHost()
   host.config = { nickname: 'chuck' }
   registerPushRoutes(host, () => {})
-  const handler = handlers.get('/meow-push-bridge-api/push/test')
+  const handler = handlers.get('/dsh-junjun-transit-api/push/test')
   assert.ok(handler !== undefined)
   if (handler === undefined) throw new Error('route not registered')
 
@@ -154,7 +154,7 @@ test('POST /push/test（meow）：不抛错，返回 JSON', async () => {
 test('POST /push/config：缺少 X-MPB-Client 返回 403', async () => {
   const { host, handlers } = makeHost()
   registerPushRoutes(host, () => {})
-  const handler = handlers.get('/meow-push-bridge-api/push/config')
+  const handler = handlers.get('/dsh-junjun-transit-api/push/config')
   assert.ok(handler !== undefined)
   if (handler === undefined) throw new Error('route not registered')
   const req = fakeRequest('GET')

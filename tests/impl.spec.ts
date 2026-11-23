@@ -90,14 +90,14 @@ function successResponse(): Response {
 
 test('buildMeowUrl：基础形状与顺序正确，并附带 msgType 请求参数', () => {
   const url = buildMeowUrl(
-    { nickname: 'chuck', title: 'MeoW Push Bridge', message: 'hello world' },
+    { nickname: 'chuck', title: '骏骏通知中转', message: 'hello world' },
     API_BASE,
   )
-  assert.equal(url, `${API_BASE}/chuck/MeoW%20Push%20Bridge/hello%20world?msgType=text`)
+  assert.equal(url, `${API_BASE}/chuck/${encodeURIComponent('骏骏通知中转')}/hello%20world?msgType=text`)
 })
 
 test('buildMeowUrl：title 为空/缺省时回退默认标题', () => {
-  const fallback = `${API_BASE}/n/MeoW%20Push%20Bridge/m?msgType=text`
+  const fallback = `${API_BASE}/n/${encodeURIComponent(DEFAULT_TITLE)}/m?msgType=text`
   assert.equal(buildMeowUrl({ nickname: 'n', title: '', message: 'm' }, API_BASE), fallback)
   assert.equal(buildMeowUrl({ nickname: 'n', message: 'm' }, API_BASE), fallback)
   assert.equal(buildMeowUrl({ nickname: 'n', title: '   ', message: 'm' }, API_BASE), fallback)

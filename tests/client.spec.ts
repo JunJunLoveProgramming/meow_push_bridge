@@ -63,7 +63,7 @@ function loadBundleWithReact(reactShim: Record<string, unknown>): Record<string,
 
 test('客户端 bundle 是预构建的 __ModuleLoader__ 格式', () => {
   assert.match(source, /window\.__ModuleLoader__\.load\(/)
-  assert.match(source, /id: 'meow-push-bridge'/)
+  assert.match(source, /id: 'dsh-junjun-transit'/)
   // 不能依赖任何构建期注入的变量
   assert.ok(!source.includes('import.meta'), 'bundle 不应使用 import.meta（宿主按脚本执行）')
 })
@@ -108,11 +108,11 @@ test('apply 注册一个 settings.plugins.tab 页签（真实 ctx 形状）', ()
   assert.equal(registrations.length, 1, '应恰好注册一个设置页签')
   const { options, component } = registrations[0] ?? {}
   assert.equal(options?.['name'], 'settings.plugins.tab')
-  assert.equal(options?.['id'], 'meow-push-bridge')
+  assert.equal(options?.['id'], 'dsh-junjun-transit')
   assert.equal(typeof options?.['order'], 'number')
   assert.equal(typeof options?.['label'], 'function')
   assert.equal(typeof component, 'function', '组件必须是函数（React 组件）')
-  assert.ok(dictionaries.includes('meow-push-bridge'), '必须注册自己的字典命名空间')
+  assert.ok(dictionaries.includes('dsh-junjun-transit'), '必须注册自己的字典命名空间')
 
   // inject() 必须提供宿主操作给组件
   const injected = (options?.['inject'] as () => Record<string, unknown>)()
@@ -140,7 +140,7 @@ test('宿主操作把 remote.settings 的调用参数透传正确', async () => 
       settings: {
         describe: async () => {
           calls.push(['describe'])
-          return { ok: true, value: { namespaces: [{ ns: 'meow-push-bridge', revision: 3, user: { nickname: 'a' } }] } }
+          return { ok: true, value: { namespaces: [{ ns: 'dsh-junjun-transit', revision: 3, user: { nickname: 'a' } }] } }
         },
         update: async (ns: string, patch: unknown, revision: unknown) => {
           calls.push(['update', ns, patch, revision])
@@ -159,7 +159,7 @@ test('宿主操作把 remote.settings 的调用参数透传正确', async () => 
   assert.equal(updated.ok, true)
   assert.deepEqual(calls, [
     ['describe'],
-    ['update', 'meow-push-bridge', { nickname: 'chuck' }, 3],
+    ['update', 'dsh-junjun-transit', { nickname: 'chuck' }, 3],
   ])
 })
 
@@ -293,7 +293,7 @@ async function renderTab(): Promise<string[]> {
           value: {
             namespaces: [
               {
-                ns: 'meow-push-bridge',
+                ns: 'dsh-junjun-transit',
                 revision: 1,
                 user: { nickname: 'n', pushMode: 'every-turn' },
                 value: { nickname: 'n', pushMode: 'every-turn' },
@@ -311,7 +311,7 @@ async function renderTab(): Promise<string[]> {
   assert.equal(typeof component, 'function')
 
   const injected = (registrations[0]?.options?.['inject'] as () => Record<string, unknown>)()
-  const t = ctx.locale.bind('meow-push-bridge')
+  const t = ctx.locale.bind('dsh-junjun-transit')
   render = () => {
     element = component?.({ t, ...injected })
   }

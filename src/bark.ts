@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/bark.ts —— 全能消息推送 Bark 通道（零依赖）
  *
  * 文档：https://www.ggsuper.com.cn/push/api.html
@@ -101,7 +101,7 @@ export async function sendBark(
 ): Promise<BarkResult> {
   const endpoint = options.endpoint ?? BARK_ENDPOINT
   const timeoutMs = Math.max(3_000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
-  const title = config.title !== '' ? config.title : message.title.trim() !== '' ? message.title.trim() : 'MeoW Push Bridge'
+  const title = config.title !== '' ? config.title : message.title.trim() !== '' ? message.title.trim() : '骏骏消息中转'
   const icon = config.icon !== '' ? config.icon : message.icon
   const url = message.url
 

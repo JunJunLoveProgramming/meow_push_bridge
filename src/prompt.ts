@@ -1,9 +1,9 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/prompt.ts —— 向 Agent 的系统提示注册「任务完成后推送通知」的约定
  *
  * 为什么需要它：
- *   本插件注册的 `meow_push_bridge` 是**被动工具** —— 模型必须主动调用才会推送。
+ *   本插件注册的 `dsh_junjun_transit` 是**被动工具** —— 模型必须主动调用才会推送。
  *   若不在系统提示里说明，Agent 不会知道「任务做完应该通知用户」。
  *
  * 实现依据（@deepseek-ai/dsh-system-prompt 的真实契约）：
@@ -19,7 +19,7 @@
  */
 
 /** 本插件注册的提示词区段名（全局唯一） */
-export const PROMPT_SECTION_NAME = 'tool:meow-push-bridge'
+export const PROMPT_SECTION_NAME = 'tool:dsh-junjun-transit'
 
 /** 区段排序值：位于其他工具说明之间 */
 export const PROMPT_SECTION_ORDER = 2500
@@ -34,7 +34,7 @@ export const PROMPT_SECTION_ORDER = 2500
 export const PUSH_INSTRUCTION_TEXT = [
   '## 任务完成通知（MeoW 推送）',
   '',
-  '本部署配置了 `meow_push_bridge` 工具，可把通知推送到用户的鸿蒙手机。使用约定：',
+  '本部署配置了 `dsh_junjun_transit` 工具，可把通知推送到用户的鸿蒙手机。使用约定：',
   '',
   '- **插件已自动在每轮结束时推送一条对话总结**（含用户提问、你的最终回复、工具统计），'
     + '因此你**不需要**为了「告知本轮结果」而调用工具。',

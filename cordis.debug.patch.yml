@@ -1,4 +1,4 @@
-# meow-push-bridge / MeoW Push Bridge (喵桥) —— 源码调试用配置补丁
+# dsh-junjun-transit / 骏骏通知中转 —— 源码调试用配置补丁
 #
 # 用途：不安装、不构建，直接把本仓库的 TypeScript 源码挂进 profile 调试。
 #       Loader 会直接加载 ./src/index.ts，配合 dsh-hmr 保存即热重载。
@@ -12,8 +12,8 @@
 # ────────────────────────────────────────────────────────────────
 
 - insert:
-    - id: meow-push-bridge
+    - id: dsh-junjun-transit
       name: ./src/index.ts
       config:
-        # 【必填】你的 MeoW 用户昵称（官方文档：不允许包含斜杠）
+        # MeoW 昵称（官方文档：不允许包含斜杠）；可留空，改用 SMTP / Bark
         nickname: ""

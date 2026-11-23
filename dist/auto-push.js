@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/auto-push.ts —— 宿主侧「每轮必推」的确定性自动推送
  *
  * 为什么需要它（这是本项目最重要的一次设计修正）：
@@ -119,7 +119,7 @@ export function registerAutoPush(ctx, options) {
     const log = (level, message) => {
         const sink = ctx.logger?.[level];
         if (typeof sink === 'function')
-            sink.call(ctx.logger, `[meow-push-bridge] ${message}`);
+            sink.call(ctx.logger, `[dsh-junjun-transit] ${message}`);
     };
     // ── 会话事件：维护统计（尽力而为） ────────────────────────────
     try {

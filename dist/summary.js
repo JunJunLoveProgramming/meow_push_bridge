@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/summary.ts —— 从会话事件里提取「本轮对话总结」
  *
  * 为什么这么做：

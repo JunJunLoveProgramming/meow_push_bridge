@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/condense.ts —— 推送用的「本地总结器」
  *
  * 目标：不依赖 LLM，把一轮对话压缩成适合手机通知的中文纯文本。

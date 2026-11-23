@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/push-settings.ts —— 推送通道状态与 SMTP 设置的宿主存储/路由
  *
  * 设计：
@@ -12,8 +12,9 @@ import { CREDENTIAL_REF, DEFAULT_CATEGORY, DEFAULT_ICON_URL, THEME_CREDENTIAL_RE
 import { DEFAULT_TITLE, pushToMeow } from './meow-api.js';
 import { FIXED_REQUEST } from './config.js';
 import { publicSmtpConfig, sendSmtpMail, validateSmtpConfig, } from './smtp.js';
-const PUSH_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_PUSH_SETTINGS';
-const ROUTE_PREFIX = '/meow-push-bridge-api';
+const PUSH_CREDENTIAL_REF = 'DSH_JUNJUN_TRANSIT_PUSH_SETTINGS';
+const LEGACY_PUSH_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_PUSH_SETTINGS';
+const ROUTE_PREFIX = '/dsh-junjun-transit-api';
 const SPONSOR_URL = 'https://www.junjunloveprogramming.cn/1794977129986';
 const MAX_BODY_BYTES = 32 * 1024;
 const DEFAULT_SMTP = {
@@ -23,12 +24,12 @@ const DEFAULT_SMTP = {
     username: '',
     password: '',
     fromEmail: '',
-    fromName: 'MeoW Push Bridge',
+    fromName: '骏骏通知中转',
     toEmail: '',
 };
 const DEFAULT_BARK = {
     token: '',
-    sender: 'MeoW Push Bridge',
+    sender: '骏骏通知中转',
     title: '',
     icon: '',
 };
@@ -86,23 +87,40 @@ export async function loadPushPreferences(ctx) {
         return memory;
     const credentials = readService(ctx, 'credentials');
     if (credentials !== undefined) {
-        try {
-            const resolved = await credentials.resolve(PUSH_CREDENTIAL_REF);
-            if (resolved !== undefined && resolved.value !== '') {
-                const parsed = JSON.parse(resolved.value);
-                if (isRecord(parsed)) {
-                    const checked = validateSmtpConfig(parsed['smtp']);
-                    const bark = validateBarkConfig(parsed['bark']);
-                    memory = {
-                        smtp: checked.ok ? checked.config : { ...DEFAULT_SMTP },
-                        bark: bark.ok ? bark.config : { ...DEFAULT_BARK },
-                    };
-                    return memory;
+        for (const ref of [PUSH_CREDENTIAL_REF, LEGACY_PUSH_CREDENTIAL_REF]) {
+            try {
+                const resolved = await credentials.resolve(ref);
+                if (resolved !== undefined && resolved.value !== '') {
+                    const parsed = JSON.parse(resolved.value);
+                    if (isRecord(parsed)) {
+                        const checked = validateSmtpConfig(parsed['smtp']);
+                        const bark = validateBarkConfig(parsed['bark']);
+                        const smtp = checked.ok ? checked.config : { ...DEFAULT_SMTP };
+                        const barkConfig = bark.ok ? bark.config : { ...DEFAULT_BARK };
+                        // 旧品牌名迁移
+                        if (smtp.fromName === 'MeoW Push Bridge')
+                            smtp.fromName = '骏骏通知中转';
+                        if (barkConfig.sender === 'MeoW Push Bridge')
+                            barkConfig.sender = '骏骏通知中转';
+                        memory = { smtp, bark: barkConfig };
+                        if (ref === LEGACY_PUSH_CREDENTIAL_REF) {
+                            try {
+                                await credentials.set(PUSH_CREDENTIAL_REF, JSON.stringify(memory));
+                                if (typeof credentials.unset === 'function') {
+                                    await credentials.unset(LEGACY_PUSH_CREDENTIAL_REF);
+                                }
+                            }
+                            catch {
+                                // 迁移失败仍返回旧设置
+                            }
+                        }
+                        return memory;
+                    }
                 }
             }
-        }
-        catch {
-            // ignore，回退默认
+            catch {
+                // 继续尝试下一个引用
+            }
         }
     }
     memory = { smtp: { ...DEFAULT_SMTP }, bark: { ...DEFAULT_BARK } };
@@ -364,7 +382,7 @@ function registerRoutes(ctx, log, meowProvider, nicknameProvider, disposers) {
                     const result = await pushToMeow({
                         nickname,
                         title: theme.title === '' ? DEFAULT_TITLE : theme.title,
-                        message: `这是一条来自喵桥的 MeoW 测试消息。\n时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+                        message: `这是一条来自骏骏通知中转的 MeoW 测试消息。\n时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
                         imgUrl: theme.imgUrl,
                         category: theme.category,
                         msgType: FIXED_REQUEST.msgType,
@@ -395,7 +413,7 @@ function registerRoutes(ctx, log, meowProvider, nicknameProvider, disposers) {
                 const theme = await getEffectiveTheme(ctx);
                 const result = await sendBark(preferences.bark, {
                     title: theme.title,
-                    text: `这是一条来自喵桥的 Bark 测试消息。\n时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+                    text: `这是一条来自骏骏通知中转的 Bark 测试消息。\n时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,
                     icon: theme.imgUrl,
                 });
                 if (!result.ok) {
@@ -411,9 +429,9 @@ function registerRoutes(ctx, log, meowProvider, nicknameProvider, disposers) {
                 return;
             }
             const result = await sendSmtpMail(preferences.smtp, {
-                subject: 'MeoW Push Bridge · SMTP 测试',
+                subject: '骏骏通知中转 · SMTP 测试',
                 text: [
-                    '这是一封来自喵桥的测试邮件。',
+                    '这是一封来自骏骏通知中转的测试邮件。',
                     '',
                     '如果你收到它，说明 SMTP 推送通道已经配置成功。',
                     `时间：${new Date().toLocaleString('zh-CN', { hour12: false })}`,

@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/tool.ts —— DSH 工具注册契约的本地声明 + defineTool 辅助函数
  *
  * 为什么本地声明而不是 `import type { ToolDefinition } from '@deepseek-ai/dsh-tools'`：

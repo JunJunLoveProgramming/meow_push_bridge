@@ -66,7 +66,7 @@ test('注册一个提示词区段，字段与顺序符合宿主契约', () => {
 })
 
 test('区段名唯一且排序落在工具说明区间内', () => {
-  assert.equal(PROMPT_SECTION_NAME, 'tool:meow-push-bridge')
+  assert.equal(PROMPT_SECTION_NAME, 'tool:dsh-junjun-transit')
   // 官方区间：TOOL_GOAL 2400 … TOOL_WORKFLOW 2600。落在其间可与其他工具说明并列。
   assert.ok(PROMPT_SECTION_ORDER > 2400, '应排在 TOOL_GOAL 之后')
   assert.ok(PROMPT_SECTION_ORDER < 2600, '应排在 TOOL_WORKFLOW 之前')
@@ -75,7 +75,7 @@ test('区段名唯一且排序落在工具说明区间内', () => {
 test('文案覆盖三件关键事：何时推 / 何时不推 / 节流', () => {
   // 何时推：完成实质任务
   assert.match(PUSH_INSTRUCTION_TEXT, /完成实质任务后/)
-  assert.match(PUSH_INSTRUCTION_TEXT, /meow_push_bridge/)
+  assert.match(PUSH_INSTRUCTION_TEXT, /dsh_junjun_transit/)
   // 何时不推：纯问答、寒暄、澄清
   assert.match(PUSH_INSTRUCTION_TEXT, /不要推送/)
   assert.match(PUSH_INSTRUCTION_TEXT, /纯问答|解释/)
@@ -116,7 +116,7 @@ test('section() 自身抛错（如同名重复注册）时不抛出异常', () =
   const ctx = {
     systemPrompt: {
       section: () => {
-        throw new Error('a section named "tool:meow-push-bridge" already exists')
+        throw new Error('a section named "tool:dsh-junjun-transit" already exists')
       },
     },
   }

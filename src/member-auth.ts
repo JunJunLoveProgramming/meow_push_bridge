@@ -1,11 +1,11 @@
 /**
- * meow-push-bridge / 0.3.0
+ * dsh-junjun-transit / 0.3.0
  * src/member-auth.ts —— 会员登录、主题同步、云端导入导出
  *
  * 流程（loopback + PKCE）：
- *   1. 设置页点「登录会员」→ POST /meow-push-bridge-api/auth/start
+ *   1. 设置页点「登录会员」→ POST /dsh-junjun-transit-api/auth/start
  *   2. 宿主生成 state + PKCE，返回站点授权 URL；浏览器打开
- *   3. 会员在站点登录并授权 → 站点重定向回 /meow-push-bridge-api/auth/callback?code&state
+ *   3. 会员在站点登录并授权 → 站点重定向回 /dsh-junjun-transit-api/auth/callback?code&state
  *   4. 宿主用 code + verifier 调 /plugin/token.php 换令牌，存入 credentials
  *   5. 设置页轮询 /auth/status 直到已授权
  *
@@ -23,27 +23,32 @@ import { join } from 'node:path'
 export const SITE_BASE = 'https://meowpushbridge.junjunloveprogramming.cn'
 
 /** 插件在本机 DSH Web 服务上注册的路由前缀 */
-export const ROUTE_PREFIX = '/meow-push-bridge-api'
+export const ROUTE_PREFIX = '/dsh-junjun-transit-api'
 
 /** 云端主题数据的 key */
 export const THEME_KEY = 'meow.theme'
 
 /** credentials 引用名（存储会话 JSON） */
-export const CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_MEMBER_TOKEN'
+export const CREDENTIAL_REF = 'DSH_JUNJUN_TRANSIT_MEMBER_TOKEN'
 
 /** credentials 引用名（存储会员主题 JSON，避免写入 profile） */
-export const THEME_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_MEMBER_THEME'
+export const THEME_CREDENTIAL_REF = 'DSH_JUNJUN_TRANSIT_MEMBER_THEME'
+
+/** 旧项目名下的凭据引用（用于升级时自动迁移） */
+const LEGACY_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_MEMBER_TOKEN'
+const LEGACY_THEME_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_MEMBER_THEME'
 
 /** 默认自定义分类（非会员固定；会员默认值） */
 export const DEFAULT_CATEGORY = 'dsh插件'
 
 /** 默认通知图标：未设置自定义图标时使用 */
 export const DEFAULT_ICON_URL =
-  'https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png'
+  'https://www.junjunloveprogramming.cn/upload/dsh-junjun-transit-logo.png'
 
 /** 旧默认图标（已失效）；读取到旧值时自动迁移到新地址 */
 const LEGACY_ICON_URLS: readonly string[] = [
   'https://www.junjunloveprogramming.cn/images/meow_push_bridge_logo.png',
+  'https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png',
   'https://meowpushbridge.junjunloveprogramming.cn/uploads/mpb_20261116_d680dc09cfa3ec17.png',
 ]
 
@@ -134,7 +139,7 @@ const pending = new Map<string, PendingAuth>()
 
 /** 最近事件（诊断用；也可在 /auth/debug 查看） */
 const events: string[] = []
-export const MEMBER_LOG_PATH = join(tmpdir(), 'meow-push-bridge-member.log')
+export const MEMBER_LOG_PATH = join(tmpdir(), 'dsh-junjun-transit-member.log')
 
 function trace(message: string): void {
   const line = `${new Date().toISOString()} ${message}`
@@ -177,7 +182,7 @@ export function createPkce(): { verifier: string; challenge: string } {
 
 export function buildAuthorizeUrl(origin: string, state: string, challenge: string): string {
   const params = new URLSearchParams({
-    client: 'meow_push_bridge',
+    client: 'dsh_junjun_transit',
     redirect_uri: `${origin}${CALLBACK_PATH}`,
     state,
     code_challenge: challenge,
@@ -306,14 +311,26 @@ function isMemberSession(value: unknown): value is MemberSession {
 async function readSession(ctx: MemberAuthHost): Promise<MemberSession | null> {
   const credentials = readService<CredentialsLike>(ctx, 'credentials')
   if (credentials !== undefined) {
-    try {
-      const resolved = await credentials.resolve(CREDENTIAL_REF)
-      if (resolved !== undefined && typeof resolved.value === 'string' && resolved.value !== '') {
-        const parsed: unknown = JSON.parse(resolved.value)
-        if (isMemberSession(parsed)) return parsed
+    for (const ref of [CREDENTIAL_REF, LEGACY_CREDENTIAL_REF]) {
+      try {
+        const resolved = await credentials.resolve(ref)
+        if (resolved !== undefined && typeof resolved.value === 'string' && resolved.value !== '') {
+          const parsed: unknown = JSON.parse(resolved.value)
+          if (isMemberSession(parsed)) {
+            if (ref === LEGACY_CREDENTIAL_REF) {
+              try {
+                await credentials.set(CREDENTIAL_REF, resolved.value)
+                await credentials.unset(LEGACY_CREDENTIAL_REF)
+              } catch {
+                // 迁移失败仍返回旧会话
+              }
+            }
+            return parsed
+          }
+        }
+      } catch {
+        // 继续尝试下一个引用
       }
-    } catch {
-      // 读取失败时退回内存
     }
   }
   return memorySession
@@ -364,23 +381,33 @@ export async function readStoredTheme(ctx: MemberAuthHost): Promise<ThemeSetting
   if (memoryTheme !== null) return memoryTheme
   const credentials = readService<CredentialsLike>(ctx, 'credentials')
   if (credentials !== undefined) {
-    try {
-      const resolved = await credentials.resolve(THEME_CREDENTIAL_REF)
-      if (resolved !== undefined && typeof resolved.value === 'string' && resolved.value !== '') {
-        const parsed: unknown = JSON.parse(resolved.value)
-        if (isThemeSettings(parsed)) {
-          const theme = parsed as ThemeSettings
-          memoryTheme = {
-            nickname: typeof theme.nickname === 'string' ? theme.nickname : '',
-            title: theme.title,
-            imgUrl: normalizeThemeIcon(theme.imgUrl),
-            category: normalizeCategory(theme.category) ?? DEFAULT_CATEGORY,
+    for (const ref of [THEME_CREDENTIAL_REF, LEGACY_THEME_CREDENTIAL_REF]) {
+      try {
+        const resolved = await credentials.resolve(ref)
+        if (resolved !== undefined && typeof resolved.value === 'string' && resolved.value !== '') {
+          const parsed: unknown = JSON.parse(resolved.value)
+          if (isThemeSettings(parsed)) {
+            const theme = parsed as ThemeSettings
+            memoryTheme = {
+              nickname: typeof theme.nickname === 'string' ? theme.nickname : '',
+              title: theme.title,
+              imgUrl: normalizeThemeIcon(theme.imgUrl),
+              category: normalizeCategory(theme.category) ?? DEFAULT_CATEGORY,
+            }
+            if (ref === LEGACY_THEME_CREDENTIAL_REF) {
+              try {
+                await credentials.set(THEME_CREDENTIAL_REF, JSON.stringify(memoryTheme))
+                await credentials.unset(LEGACY_THEME_CREDENTIAL_REF)
+              } catch {
+                // 迁移失败仍返回旧主题
+              }
+            }
+            return memoryTheme
           }
-          return memoryTheme
         }
+      } catch {
+        // 继续尝试下一个引用
       }
-    } catch {
-      // ignore
     }
   }
   return null
@@ -513,7 +540,7 @@ async function exchangeCode(
   const { status, data } = await callSite('/plugin/token.php', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, verifier, client: 'meow_push_bridge' }),
+    body: JSON.stringify({ code, verifier, client: 'dsh_junjun_transit' }),
   })
 
   if (status !== 200 || data['ok'] !== true) {
@@ -704,7 +731,7 @@ export function registerMemberRoutes(
 
     if (typeof ctx.effect === 'function') {
       try {
-        ctx.effect(() => () => clearInterval(timer), 'meow-push-bridge:member-route-wait')
+        ctx.effect(() => () => clearInterval(timer), 'dsh-junjun-transit:member-route-wait')
       } catch {
         // effect 不可用时忽略，定时器已 unref，不会阻塞退出
       }
@@ -957,7 +984,7 @@ export function registerMemberRoutes(
   let registered = false
   if (typeof ctx.effect === 'function') {
     try {
-      ctx.effect(() => web.register(route), 'meow-push-bridge:member-routes')
+      ctx.effect(() => web.register(route), 'dsh-junjun-transit:member-routes')
       registered = true
     } catch (error) {
       log('warn', `ctx.effect 注册路由失败：${String(error)}`)

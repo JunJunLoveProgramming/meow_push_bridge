@@ -1,7 +1,7 @@
 {
-  "name": "meow-push-bridge",
-  "version": "0.5.0",
-  "description": "MeoW Push Bridge (喵桥) — 让 DSH Agent 通过 MeoW、SMTP 或 Bark 推送中文摘要的工具插件（零运行时依赖）· 0.5.0 新增三通道自动启用、内置总结器与品牌图标",
+  "name": "dsh-junjun-transit",
+  "version": "0.5.1",
+  "description": "骏骏通知中转 — 让 DSH Agent 通过 MeoW、SMTP 或 Bark 推送中文摘要的工具插件（零运行时依赖）· 0.5.1 全局品牌更名为 dsh-junjun-transit",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -73,12 +73,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JunJunLoveProgramming/meow-push-bridge.git"
+    "url": "git+https://github.com/JunJunLoveProgramming/dsh-junjun-transit.git"
   },
   "bugs": {
-    "url": "https://github.com/JunJunLoveProgramming/meow-push-bridge/issues"
+    "url": "https://github.com/JunJunLoveProgramming/dsh-junjun-transit/issues"
   },
-  "homepage": "https://github.com/JunJunLoveProgramming/meow-push-bridge#readme",
+  "homepage": "https://github.com/JunJunLoveProgramming/dsh-junjun-transit#readme",
   "author": "骏骏爱编程 (https://github.com/JunJunLoveProgramming)",
   "contributors": [
     "方程 chuckfang <chuckfang@qq.com>（MeoW API 与 MeoW App 技术支持）"

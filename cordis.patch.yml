@@ -1,4 +1,4 @@
-# meow-push-bridge / MeoW Push Bridge (喵桥) —— 发布用配置补丁
+# dsh-junjun-transit / 骏骏通知中转 —— 发布用配置补丁
 #
 # 本文件是 DSH 的「插件配置补丁」（cordis patch）。作为 Bundle 安装后，DSH 的
 # Loader 会把它叠加到 profile 配置层上，插入本插件并注入 config。
@@ -7,23 +7,17 @@
 #    源码调试请改用同目录的 cordis.debug.patch.yml（那里 name 为 ./src/index.ts）。
 #    原因：npm 包的 files 白名单只含 dist/，装到 profile 后并没有 src/ 目录。
 #
-# ⚠️ nickname 为必填项。留空时本插件会拒绝注册 meow_push_bridge 工具并打印错误，
-#    这是刻意设计的行为，用于防止误推到未知账号。
-#    修改昵称后，重载插件（保存本文件触发 hmr，或重启 dsh）即可生效。
+# ⚠️ MeoW 昵称可为空：只要 SMTP 或 Bark 已配置，插件仍会注册 dsh_junjun_transit 工具。
+#    三种通道至少配置一种即可推送；修改昵称后保存设置或重启 dsh 即可生效。
 #
-# 0.3.0：昵称必填；title / imgUrl 为会员主题（登录会员后在设置页显示并可云端同步）。
-# 其余请求细节已按官方文档的推荐值固化在代码里（见 src/config.ts 的 FIXED_REQUEST）：
-#   API 地址 https://api.chuckfang.com、方法 GET、超时 10s、格式 text、
-#   节流窗口 5s、自动推送 every-turn、最小发送间隔 3s。
+# 0.5.1：项目更名为 dsh-junjun-transit（骏骏通知中转）。
+# 主题（标题 / 图标 URL / 分类）保存在宿主安全存储，不写入本文件。
 # ────────────────────────────────────────────────────────────────
 
 - insert:
-    - id: meow-push-bridge
-      name: meow-push-bridge
+    - id: dsh-junjun-transit
+      name: dsh-junjun-transit
       config:
-        # 【必填】你的 MeoW 用户昵称，对应推送地址 https://api.chuckfang.com/{昵称}/...
-        # 官方文档：昵称不允许包含斜杠。
+        # 你的 MeoW 用户昵称，对应推送地址 https://api.chuckfang.com/{昵称}/...
+        # 官方文档：昵称不允许包含斜杠。可留空，改用 SMTP / Bark。
         nickname: ""
-        # 会员主题（可选）：通知标题 / 图标 URL，登录会员后可在设置页填写并同步
-        title: ""
-        imgUrl: ""

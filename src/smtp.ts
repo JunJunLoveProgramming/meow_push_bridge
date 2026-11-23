@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/smtp.ts —— 零依赖 SMTP 客户端（纯文本邮件）
  *
  * 为什么自己实现：
@@ -127,7 +127,7 @@ function wrapBase64(text: string): string {
 export function buildSmtpMessage(config: SmtpConfig, message: SmtpMessage): string {
   const fromName = encodeHeader(config.fromName)
   const from = fromName === '' ? config.fromEmail : `${fromName} <${config.fromEmail}>`
-  const subject = encodeHeader(message.subject.trim() === '' ? 'MeoW 任务摘要' : message.subject)
+  const subject = encodeHeader(message.subject.trim() === '' ? '骏骏消息中转' : message.subject)
   const body = wrapBase64(message.text)
   const domain = config.fromEmail.split('@')[1] ?? 'localhost'
 

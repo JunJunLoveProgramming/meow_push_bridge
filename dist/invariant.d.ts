@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/invariant.ts —— 包自有不变式（package-owned invariants）
  *
  * 设计原则：不变式是「纯函数 + 结构化结果」，因此
@@ -17,8 +17,8 @@
  */
 import { type ResolvedMeoWConfig } from './config.js';
 /** 工具名常量在此重复声明，避免与 index.ts 形成循环依赖 */
-export declare const EXPECTED_TOOL_NAME = "meow_push_bridge";
-export declare const EXPECTED_PLUGIN_ID = "meow-push-bridge";
+export declare const EXPECTED_TOOL_NAME = "dsh_junjun_transit";
+export declare const EXPECTED_PLUGIN_ID = "dsh-junjun-transit";
 export declare const EXPECTED_INJECT = "tools";
 /** 一条不变式的检查结果 */
 export interface InvariantViolation {

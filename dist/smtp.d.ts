@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/smtp.ts —— 零依赖 SMTP 客户端（纯文本邮件）
  *
  * 为什么自己实现：

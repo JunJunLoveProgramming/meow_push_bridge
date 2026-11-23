@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/config.ts —— 插件配置定义、归一化与校验
  *
  * 配置面刻意保持最小：**只有昵称需要用户填写**。
@@ -20,7 +20,7 @@ export { DEFAULT_API_BASE, DEFAULT_TIMEOUT_MS };
 /** MeoW 昵称缺失时使用的错误码（供测试与用户排查引用） */
 export const MEOW_NICKNAME_REQUIRED = 'MEOW_NICKNAME_REQUIRED';
 /** 面向用户的中文错误提示：说明哪里填、填完怎么生效 */
-export const MEOW_NICKNAME_REQUIRED_MESSAGE = 'MeoW 昵称未配置，请在设置页的「喵桥」里填写昵称，或修改 cordis.patch.yml 后重载插件。';
+export const MEOW_NICKNAME_REQUIRED_MESSAGE = 'MeoW 昵称未配置，请在设置页的「骏骏通知中转」里填写昵称，或修改 cordis.patch.yml 后重载插件。';
 /** 固化在代码里的请求参数（不作为配置项暴露） */
 export const FIXED_REQUEST = {
     /** 官方推荐的 HTTPS 地址 */
@@ -112,7 +112,7 @@ export function resolveConfig(raw, warn) {
     // 它们由会员登录后的宿主存储与云端提供，避免非会员手改配置绕过会员限制。
     for (const key of ['title', 'imgUrl', 'category']) {
         if (table[key] !== undefined) {
-            warn?.(`配置里的 ${key} 已不再生效：主题请在「喵桥」设置页填写（本机保存）。`);
+            warn?.(`配置里的 ${key} 已不再生效：主题请在「骏骏通知中转」设置页填写（本机保存）。`);
         }
     }
     return { nickname };

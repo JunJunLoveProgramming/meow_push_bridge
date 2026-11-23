@@ -1,11 +1,11 @@
 /**
- * meow-push-bridge / 0.3.0
+ * dsh-junjun-transit / 0.3.0
  * src/member-auth.ts —— 会员登录、主题同步、云端导入导出
  *
  * 流程（loopback + PKCE）：
- *   1. 设置页点「登录会员」→ POST /meow-push-bridge-api/auth/start
+ *   1. 设置页点「登录会员」→ POST /dsh-junjun-transit-api/auth/start
  *   2. 宿主生成 state + PKCE，返回站点授权 URL；浏览器打开
- *   3. 会员在站点登录并授权 → 站点重定向回 /meow-push-bridge-api/auth/callback?code&state
+ *   3. 会员在站点登录并授权 → 站点重定向回 /dsh-junjun-transit-api/auth/callback?code&state
  *   4. 宿主用 code + verifier 调 /plugin/token.php 换令牌，存入 credentials
  *   5. 设置页轮询 /auth/status 直到已授权
  *
@@ -14,17 +14,17 @@
 /** 会员站点 */
 export declare const SITE_BASE = "https://meowpushbridge.junjunloveprogramming.cn";
 /** 插件在本机 DSH Web 服务上注册的路由前缀 */
-export declare const ROUTE_PREFIX = "/meow-push-bridge-api";
+export declare const ROUTE_PREFIX = "/dsh-junjun-transit-api";
 /** 云端主题数据的 key */
 export declare const THEME_KEY = "meow.theme";
 /** credentials 引用名（存储会话 JSON） */
-export declare const CREDENTIAL_REF = "MEOW_PUSH_BRIDGE_MEMBER_TOKEN";
+export declare const CREDENTIAL_REF = "DSH_JUNJUN_TRANSIT_MEMBER_TOKEN";
 /** credentials 引用名（存储会员主题 JSON，避免写入 profile） */
-export declare const THEME_CREDENTIAL_REF = "MEOW_PUSH_BRIDGE_MEMBER_THEME";
+export declare const THEME_CREDENTIAL_REF = "DSH_JUNJUN_TRANSIT_MEMBER_THEME";
 /** 默认自定义分类（非会员固定；会员默认值） */
 export declare const DEFAULT_CATEGORY = "dsh\u63D2\u4EF6";
 /** 默认通知图标：未设置自定义图标时使用 */
-export declare const DEFAULT_ICON_URL = "https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png";
+export declare const DEFAULT_ICON_URL = "https://www.junjunloveprogramming.cn/upload/dsh-junjun-transit-logo.png";
 /** 分类最大长度（MeoW 文档：10 个字） */
 export declare const MAX_CATEGORY_LENGTH = 10;
 export interface MemberSession {

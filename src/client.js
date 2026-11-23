@@ -1,6 +1,6 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
- * src/client.js —— 浏览器半体：DSH 设置页里的「喵桥」配置页签
+ * dsh-junjun-transit / 骏骏通知中转
+ * src/client.js —— 浏览器半体：DSH 设置页里的「骏骏通知中转」配置页签
  *
  * ⚠️ 本文件是**预构建产物**，不是普通模块，也不是 TypeScript 源码：
  *    DSH 的客户端模块系统（@deepseek-ai/dsh-client-modules）要求
@@ -23,7 +23,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'meow-push-bridge',
+  id: 'dsh-junjun-transit',
   factory: (require) => {
     var module = { exports: {} }
     var exports = module.exports
@@ -32,12 +32,12 @@ window.__ModuleLoader__.load({
     const React = require('react')
 
     // ── 插件自己的字典命名空间 ──────────────────────────────────
-    const NS = 'meow-push-bridge'
+    const NS = 'dsh-junjun-transit'
 
     // ── locale 字典（与 DSH 内置插件同样的 zh/en 结构）───────────
     const zh = {
-      tab: '喵桥',
-      title: '喵桥 · MeoW 推送',
+      tab: '骏骏通知中转',
+      title: '骏骏通知中转',
       nickname: 'MeoW 昵称',
       nicknameHint: '必填。对应推送地址 https://api.chuckfang.com/{昵称}/… 的第一段。官方文档：昵称不允许包含斜杠。留空则不会注册推送工具。',
       memberTitle: '主题设置',
@@ -54,7 +54,7 @@ window.__ModuleLoader__.load({
       loggedInAs: '已登录',
       notMember: '未登录会员',
       themeTitle: 'MeoW 通知标题',
-      themeTitleHint: '主题。留空时使用默认标题「MeoW Push Bridge」。',
+      themeTitleHint: '主题。留空时使用默认标题「骏骏消息中转」。',
       themeIcon: '自定义图标 URL',
       themeIconHint: '主题。官方建议 216×216 PNG；留空则使用默认图标。',
       themeCategory: '自定义分类',
@@ -125,7 +125,7 @@ window.__ModuleLoader__.load({
     }
     const en = {
       tab: 'MeoW Bridge',
-      title: 'MeoW Push Bridge',
+      title: '骏骏通知中转',
       nickname: 'MeoW nickname',
       nicknameHint: 'Required. The first path segment of https://api.chuckfang.com/{nickname}/… The spec forbids slashes in a nickname. Leave it empty and the tool is not registered.',
       memberTitle: 'Theme settings',
@@ -142,7 +142,7 @@ window.__ModuleLoader__.load({
       loggedInAs: 'Signed in as',
       notMember: 'Not signed in',
       themeTitle: 'MeoW notification title',
-      themeTitleHint: 'Theme. Empty uses the default title "MeoW Push Bridge".',
+      themeTitleHint: 'Theme. Empty uses the default title "骏骏消息中转".',
       themeIcon: 'Custom icon URL',
       themeIconHint: 'Theme. 216×216 PNG recommended; empty uses the default icon.',
       themeCategory: 'Custom category',
@@ -225,7 +225,7 @@ window.__ModuleLoader__.load({
     /** 判断某个命名空间是否属于本插件（容忍 id 命名风格差异） */
     function isMeoWNamespace(ns) {
       const value = String(ns ?? '')
-      return value === 'meow-push-bridge' || value === 'meow_push_bridge' || value.indexOf('meow') >= 0
+      return value === 'dsh-junjun-transit' || value === 'dsh_junjun_transit' || value.indexOf('meow') >= 0
     }
 
     /**
@@ -268,13 +268,13 @@ window.__ModuleLoader__.load({
           encryption: 'starttls',
           username: '',
           fromEmail: '',
-          fromName: 'MeoW Push Bridge',
+          fromName: '骏骏通知中转',
           toEmail: '',
           hasPassword: false,
           status: { configured: false, detail: '未填写 SMTP 服务器或收件人' },
         },
         bark: {
-          sender: 'MeoW Push Bridge',
+          sender: '骏骏通知中转',
           title: '',
           icon: '',
           status: { configured: false, detail: '未填写 Bark token' },
@@ -282,7 +282,7 @@ window.__ModuleLoader__.load({
       })
       const [barkDraft, setBarkDraft] = React.useState({
         token: '',
-        sender: 'MeoW Push Bridge',
+        sender: '骏骏通知中转',
         title: '',
         icon: '',
       })
@@ -293,7 +293,7 @@ window.__ModuleLoader__.load({
         username: '',
         password: '',
         fromEmail: '',
-        fromName: 'MeoW Push Bridge',
+        fromName: '骏骏通知中转',
         toEmail: '',
       })
       const [smtpBusy, setSmtpBusy] = React.useState(false)
@@ -306,7 +306,7 @@ window.__ModuleLoader__.load({
 
       const refreshMember = React.useCallback(async () => {
         try {
-          const response = await fetch('/meow-push-bridge-api/auth/status', { headers: { 'X-MPB-Client': '1' } })
+          const response = await fetch('/dsh-junjun-transit-api/auth/status', { headers: { 'X-MPB-Client': '1' } })
           const data = await readJson(response, '会员')
           if (data && data.authorized) {
             setMember({ phase: 'authorized', authorized: true, account: data.account || null, message: '' })
@@ -324,7 +324,7 @@ window.__ModuleLoader__.load({
       }, [])
 
       React.useEffect(() => {
-        fetch('/meow-push-bridge-api/push/config', { headers: { 'X-MPB-Client': '1' } })
+        fetch('/dsh-junjun-transit-api/push/config', { headers: { 'X-MPB-Client': '1' } })
           .then((response) => readJson(response, '推送设置'))
           .then((data) => {
             if (!data || data.ok !== true) return
@@ -352,7 +352,7 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false
-        fetch('/meow-push-bridge-api/theme', { headers: { 'X-MPB-Client': '1' } })
+        fetch('/dsh-junjun-transit-api/theme', { headers: { 'X-MPB-Client': '1' } })
           .then((response) => readJson(response, '会员'))
           .then((data) => {
             if (cancelled) return
@@ -379,9 +379,9 @@ window.__ModuleLoader__.load({
         setMemberNote('')
         setMember({ phase: 'starting', authorized: false, account: null, message: '', loginUrl: null })
         const back = encodeURIComponent(window.location.href)
-        const fallback = '/meow-push-bridge-api/auth/start?sameTab=1&return=' + back
+        const fallback = '/dsh-junjun-transit-api/auth/start?sameTab=1&return=' + back
         try {
-          const response = await fetch('/meow-push-bridge-api/auth/start', {
+          const response = await fetch('/dsh-junjun-transit-api/auth/start', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1' },
             signal: AbortSignal.timeout(8000),
@@ -418,7 +418,7 @@ window.__ModuleLoader__.load({
         setSyncBusy('logout')
         setMemberNote('')
         try {
-          await fetch('/meow-push-bridge-api/auth/logout', {
+          await fetch('/dsh-junjun-transit-api/auth/logout', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1' },
           })
@@ -441,7 +441,7 @@ window.__ModuleLoader__.load({
           return
         }
         try {
-          const response = await fetch('/meow-push-bridge-api/sync/upload', {
+          const response = await fetch('/dsh-junjun-transit-api/sync/upload', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -466,7 +466,7 @@ window.__ModuleLoader__.load({
         setMemberNote('')
         setMemberError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/sync/download', {
+          const response = await fetch('/dsh-junjun-transit-api/sync/download', {
             headers: { 'X-MPB-Client': '1' },
           })
           const data = await readJson(response, '会员')
@@ -575,7 +575,7 @@ window.__ModuleLoader__.load({
         try {
           // 主题写入宿主存储（不写 profile），昵称仍写配置
           {
-            const themeResponse = await fetch('/meow-push-bridge-api/theme', {
+            const themeResponse = await fetch('/dsh-junjun-transit-api/theme', {
               method: 'POST',
               headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -720,7 +720,7 @@ window.__ModuleLoader__.load({
         setSmtpNote('')
         setSmtpError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/push/config', {
+          const response = await fetch('/dsh-junjun-transit-api/push/config', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({ smtp: smtpDraft }),
@@ -744,7 +744,7 @@ window.__ModuleLoader__.load({
         setSmtpNote('')
         setSmtpError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/push/config', {
+          const response = await fetch('/dsh-junjun-transit-api/push/config', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({ bark: barkDraft }),
@@ -768,7 +768,7 @@ window.__ModuleLoader__.load({
         setSmtpNote('')
         setSmtpError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/push/config', {
+          const response = await fetch('/dsh-junjun-transit-api/push/config', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({ smtp: { clear: true } }),
@@ -792,7 +792,7 @@ window.__ModuleLoader__.load({
         setSmtpNote('')
         setSmtpError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/push/config', {
+          const response = await fetch('/dsh-junjun-transit-api/push/config', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({ bark: { clear: true } }),
@@ -841,7 +841,7 @@ window.__ModuleLoader__.load({
 
       const openSponsor = async () => {
         try {
-          const response = await fetch('/meow-push-bridge-api/sponsor', {
+          const response = await fetch('/dsh-junjun-transit-api/sponsor', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1' },
           })
@@ -859,7 +859,7 @@ window.__ModuleLoader__.load({
         setSmtpNote('')
         setSmtpError('')
         try {
-          const response = await fetch('/meow-push-bridge-api/push/test', {
+          const response = await fetch('/dsh-junjun-transit-api/push/test', {
             method: 'POST',
             headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
             body: JSON.stringify({ channel }),
@@ -1040,7 +1040,7 @@ window.__ModuleLoader__.load({
               pushConfig.smtp && pushConfig.smtp.hasPassword ? '••••••••' : '',
             ),
             smtpField('fromEmail', 'smtpFromEmail', 'email', 'noreply@example.com'),
-            smtpField('fromName', 'smtpFromName', 'text', 'MeoW Push Bridge'),
+            smtpField('fromName', 'smtpFromName', 'text', '骏骏通知中转'),
             smtpField('toEmail', 'smtpToEmail', 'email', 'you@example.com'),
           ),
           React.createElement(
@@ -1295,7 +1295,7 @@ window.__ModuleLoader__.load({
               pushConfig.smtp && pushConfig.smtp.hasPassword ? '••••••••' : '',
             ),
             smtpField('fromEmail', 'smtpFromEmail', 'email', 'noreply@example.com'),
-            smtpField('fromName', 'smtpFromName', 'text', 'MeoW Push Bridge'),
+            smtpField('fromName', 'smtpFromName', 'text', '骏骏通知中转'),
             smtpField('toEmail', 'smtpToEmail', 'email', 'you@example.com'),
           ],
           onSave: saveSmtp,
@@ -1317,9 +1317,9 @@ window.__ModuleLoader__.load({
           status: pushConfig.bark && pushConfig.bark.status,
           fields: [
             barkField('token', 'barkToken', 'text', ''),
-            barkField('title', 'barkTitleField', 'text', draft.title || 'MeoW Push Bridge'),
+            barkField('title', 'barkTitleField', 'text', draft.title || '骏骏消息中转'),
             barkField('icon', 'barkIcon', 'url', draft.imgUrl || ''),
-            barkField('sender', 'barkSender', 'text', 'MeoW Push Bridge'),
+            barkField('sender', 'barkSender', 'text', '骏骏通知中转'),
           ],
           onSave: saveBark,
           saveLabel: t('barkSave'),
@@ -1377,7 +1377,7 @@ window.__ModuleLoader__.load({
             t('barkIntro'),
           ),
           barkField('token', 'barkToken', 'text', ''),
-          barkField('sender', 'barkSender', 'text', 'MeoW Push Bridge'),
+          barkField('sender', 'barkSender', 'text', '骏骏通知中转'),
           React.createElement(
             'span',
             { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
@@ -1709,13 +1709,13 @@ window.__ModuleLoader__.load({
      */
     function apply(ctx) {
       const t = ctx.locale.bind(NS)
-      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'meow-push-bridge: dictionaries')
+      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-junjun-transit: dictionaries')
 
       ctx.slots.inject('settings.plugins.tab', () =>
         ctx.slots.register(
           {
             name: 'settings.plugins.tab',
-            id: 'meow-push-bridge',
+            id: 'dsh-junjun-transit',
             order: 30,
             label: () => t('tab'),
             locale: NS,

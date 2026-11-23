@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/config.ts —— 插件配置定义、归一化与校验
  *
  * 配置面刻意保持最小：**只有昵称需要用户填写**。
@@ -21,7 +21,7 @@ export { DEFAULT_API_BASE, DEFAULT_TIMEOUT_MS };
 /** MeoW 昵称缺失时使用的错误码（供测试与用户排查引用） */
 export declare const MEOW_NICKNAME_REQUIRED = "MEOW_NICKNAME_REQUIRED";
 /** 面向用户的中文错误提示：说明哪里填、填完怎么生效 */
-export declare const MEOW_NICKNAME_REQUIRED_MESSAGE = "MeoW \u6635\u79F0\u672A\u914D\u7F6E\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u9875\u7684\u300C\u55B5\u6865\u300D\u91CC\u586B\u5199\u6635\u79F0\uFF0C\u6216\u4FEE\u6539 cordis.patch.yml \u540E\u91CD\u8F7D\u63D2\u4EF6\u3002";
+export declare const MEOW_NICKNAME_REQUIRED_MESSAGE = "MeoW \u6635\u79F0\u672A\u914D\u7F6E\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u9875\u7684\u300C\u9A8F\u9A8F\u901A\u77E5\u4E2D\u8F6C\u300D\u91CC\u586B\u5199\u6635\u79F0\uFF0C\u6216\u4FEE\u6539 cordis.patch.yml \u540E\u91CD\u8F7D\u63D2\u4EF6\u3002";
 /**
  * 插件配置接口（对应 cordis.patch.yml 中该 entry 的 config 段）。
  * nickname 必填；title / imgUrl 属于会员主题（0.3.0 起）。

@@ -15,7 +15,7 @@ const BASE = {
   username: '',
   password: '',
   fromEmail: 'bot@example.com',
-  fromName: '喵桥',
+  fromName: '骏骏通知中转',
   toEmail: 'user@example.com',
 }
 

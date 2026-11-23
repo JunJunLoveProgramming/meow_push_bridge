@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/invariant.ts —— 包自有不变式（package-owned invariants）
  *
  * 设计原则：不变式是「纯函数 + 结构化结果」，因此
@@ -18,8 +18,8 @@
 import { FIXED_REQUEST } from './config.js';
 import { SCHEMASTERY_BRAND } from './schema.js';
 /** 工具名常量在此重复声明，避免与 index.ts 形成循环依赖 */
-export const EXPECTED_TOOL_NAME = 'meow_push_bridge';
-export const EXPECTED_PLUGIN_ID = 'meow-push-bridge';
+export const EXPECTED_TOOL_NAME = 'dsh_junjun_transit';
+export const EXPECTED_PLUGIN_ID = 'dsh-junjun-transit';
 export const EXPECTED_INJECT = 'tools';
 /** 从任意工具定义里安全读出 parameters（不存在则返回 undefined） */
 function readParameters(definition) {
@@ -39,31 +39,31 @@ function readParameters(definition) {
 export function createInvariants(input) {
     return [
         {
-            id: 'meow-push-bridge/plugin-id',
-            description: '插件 ID / Cordis 插件名必须与仓库名、npm 包名统一为 meow-push-bridge',
+            id: 'dsh-junjun-transit/plugin-id',
+            description: '插件 ID / Cordis 插件名必须与仓库名、npm 包名统一为 dsh-junjun-transit',
             check: () => input.pluginName === EXPECTED_PLUGIN_ID
                 ? []
                 : [
                     {
-                        id: 'meow-push-bridge/plugin-id',
+                        id: 'dsh-junjun-transit/plugin-id',
                         message: `插件名应为 "${EXPECTED_PLUGIN_ID}"，实际为 "${input.pluginName}"。`,
                     },
                 ],
         },
         {
-            id: 'meow-push-bridge/inject-tools',
+            id: 'dsh-junjun-transit/inject-tools',
             description: "插件必须声明 inject: ['tools']，否则 ctx.tools 不可用",
             check: () => input.inject.includes(EXPECTED_INJECT)
                 ? []
                 : [
                     {
-                        id: 'meow-push-bridge/inject-tools',
+                        id: 'dsh-junjun-transit/inject-tools',
                         message: `inject 必须包含 "${EXPECTED_INJECT}"，实际为 [${input.inject.join(', ')}]。`,
                     },
                 ],
         },
         {
-            id: 'meow-push-bridge/tool-name',
+            id: 'dsh-junjun-transit/tool-name',
             description: `工具名必须是 ${EXPECTED_TOOL_NAME}`,
             check: () => {
                 const actual = input.definition !== null && typeof input.definition === 'object'
@@ -73,21 +73,21 @@ export function createInvariants(input) {
                     ? []
                     : [
                         {
-                            id: 'meow-push-bridge/tool-name',
+                            id: 'dsh-junjun-transit/tool-name',
                             message: `工具名应为 "${EXPECTED_TOOL_NAME}"，实际为 "${String(actual)}"。`,
                         },
                     ];
             },
         },
         {
-            id: 'meow-push-bridge/schema-required-message',
+            id: 'dsh-junjun-transit/schema-required-message',
             description: '工具 schema 必须把 message 标为 required，且 title/url 保持可选',
             check: () => {
                 const parameters = readParameters(input.definition);
                 if (parameters === undefined) {
                     return [
                         {
-                            id: 'meow-push-bridge/schema-required-message',
+                            id: 'dsh-junjun-transit/schema-required-message',
                             message: '工具定义缺少 parameters 对象。',
                         },
                     ];
@@ -97,7 +97,7 @@ export function createInvariants(input) {
                 if (!requiredList.includes('message')) {
                     return [
                         {
-                            id: 'meow-push-bridge/schema-required-message',
+                            id: 'dsh-junjun-transit/schema-required-message',
                             message: 'parameters.required 必须包含 "message"。',
                         },
                     ];
@@ -106,7 +106,7 @@ export function createInvariants(input) {
                     if (requiredList.includes(optionalField)) {
                         return [
                             {
-                                id: 'meow-push-bridge/schema-required-message',
+                                id: 'dsh-junjun-transit/schema-required-message',
                                 message: `parameters.required 不应包含可选字段 "${optionalField}"。`,
                             },
                         ];
@@ -116,7 +116,7 @@ export function createInvariants(input) {
             },
         },
         {
-            id: 'meow-push-bridge/schema-no-nickname',
+            id: 'dsh-junjun-transit/schema-no-nickname',
             description: 'nickname 必须来自插件配置，绝不能出现在工具入参 schema 里',
             check: () => {
                 const parameters = readParameters(input.definition);
@@ -129,7 +129,7 @@ export function createInvariants(input) {
                 return hasNickname
                     ? [
                         {
-                            id: 'meow-push-bridge/schema-no-nickname',
+                            id: 'dsh-junjun-transit/schema-no-nickname',
                             message: '工具入参 schema 中出现 nickname：昵称必须来自插件配置而非工具参数。',
                         },
                     ]
@@ -137,7 +137,7 @@ export function createInvariants(input) {
             },
         },
         {
-            id: 'meow-push-bridge/runtime-config',
+            id: 'dsh-junjun-transit/runtime-config',
             description: '运行时配置必须已被归一化：固化的请求参数合法',
             check: () => {
                 const violations = [];
@@ -145,19 +145,19 @@ export function createInvariants(input) {
                 // 请求参数已固化（见 config.ts 的 FIXED_REQUEST），这里校验常量本身没被改坏
                 if (!/^https?:\/\/[^/\s]+/i.test(FIXED_REQUEST.apiBase)) {
                     violations.push({
-                        id: 'meow-push-bridge/runtime-config',
+                        id: 'dsh-junjun-transit/runtime-config',
                         message: `固化的 apiBase 非法："${FIXED_REQUEST.apiBase}"。`,
                     });
                 }
                 if (!(FIXED_REQUEST.timeout > 0)) {
                     violations.push({
-                        id: 'meow-push-bridge/runtime-config',
+                        id: 'dsh-junjun-transit/runtime-config',
                         message: `固化的 timeout 必须为正数，实际为 ${FIXED_REQUEST.timeout}。`,
                     });
                 }
                 if (FIXED_REQUEST.method !== 'GET' && FIXED_REQUEST.method !== 'POST') {
                     violations.push({
-                        id: 'meow-push-bridge/runtime-config',
+                        id: 'dsh-junjun-transit/runtime-config',
                         message: `固化的 method 非法："${String(FIXED_REQUEST.method)}"。`,
                     });
                 }
@@ -165,7 +165,7 @@ export function createInvariants(input) {
             },
         },
         {
-            id: 'meow-push-bridge/config-schema-native',
+            id: 'dsh-junjun-transit/config-schema-native',
             description: 'Config 必须能被宿主识别为原生 schemastery（否则设置页报「宿主未提供本插件的配置命名空间」）',
             check: () => {
                 const schema = input.configSchema;
@@ -176,7 +176,7 @@ export function createInvariants(input) {
                 if (schema === null || (typeof schema !== 'object' && typeof schema !== 'function')) {
                     return [
                         {
-                            id: 'meow-push-bridge/config-schema-native',
+                            id: 'dsh-junjun-transit/config-schema-native',
                             message: 'Config 必须是对象。',
                         },
                     ];
@@ -191,7 +191,7 @@ export function createInvariants(input) {
                     return [];
                 return [
                     {
-                        id: 'meow-push-bridge/config-schema-native',
+                        id: 'dsh-junjun-transit/config-schema-native',
                         message: 'Config 缺少 schemastery 品牌标记（Symbol.for("schemastery")）：' +
                             '宿主会把它判为 unsupported，设置页将显示「宿主未提供本插件的配置命名空间」。',
                     },

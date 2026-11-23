@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/schema.ts —— 零依赖的 Config schema 声明
  *
  * 目的：让 DSH 的 settings 服务能把本插件的配置投影成「设置页表单」，
@@ -315,7 +315,7 @@ export class Schema {
     get ['~standard']() {
         return {
             version: 1,
-            vendor: 'meow-push-bridge',
+            vendor: 'dsh-junjun-transit',
             validate: (value) => {
                 if (this.kind !== 'object') {
                     const result = this.check(value);

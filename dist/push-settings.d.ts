@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/push-settings.ts —— 推送通道状态与 SMTP 设置的宿主存储/路由
  *
  * 设计：

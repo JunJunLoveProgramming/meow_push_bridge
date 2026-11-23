@@ -23,8 +23,8 @@ test('createPkce：verifier/challenge 长度合法，challenge = S256(verifier)'
 test('buildAuthorizeUrl：包含固定站点、回调、state 与 PKCE 参数', () => {
   const url = new URL(buildAuthorizeUrl('http://127.0.0.1:7234', 'state-1', 'c'.repeat(43)))
   assert.equal(`${url.origin}${url.pathname}`, `${SITE_BASE}/plugin/authorize.php`)
-  assert.equal(url.searchParams.get('client'), 'meow_push_bridge')
-  assert.equal(url.searchParams.get('redirect_uri'), 'http://127.0.0.1:7234/meow-push-bridge-api/auth/callback')
+  assert.equal(url.searchParams.get('client'), 'dsh_junjun_transit')
+  assert.equal(url.searchParams.get('redirect_uri'), 'http://127.0.0.1:7234/dsh-junjun-transit-api/auth/callback')
   assert.equal(url.searchParams.get('state'), 'state-1')
   assert.equal(url.searchParams.get('code_challenge'), 'c'.repeat(43))
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256')

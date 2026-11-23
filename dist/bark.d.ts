@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/bark.ts —— 全能消息推送 Bark 通道（零依赖）
  *
  * 文档：https://www.ggsuper.com.cn/push/api.html

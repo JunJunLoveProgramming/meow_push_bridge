@@ -1,5 +1,5 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/auto-push.ts —— 宿主侧「每轮必推」的确定性自动推送
  *
  * 为什么需要它（这是本项目最重要的一次设计修正）：

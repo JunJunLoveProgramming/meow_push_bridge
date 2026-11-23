@@ -1,11 +1,11 @@
 /**
- * meow-push-bridge / MeoW Push Bridge (喵桥)
+ * dsh-junjun-transit / 骏骏通知中转
  * src/index.ts —— 插件入口：加载期配置校验 + 工具注册 + 推送执行
  *
  * 加载期行为：
  *   - 从 ctx.config（或 apply 的第二参数 config）读取插件配置；
  *   - nickname 缺失/空白 → 记录 error 日志并直接 return，绝不注册工具；
- *   - 校验通过 → 注册 meow_push_bridge 工具，向系统提示注册「任务完成自动推送」约定
+ *   - 校验通过 → 注册 dsh_junjun_transit 工具，向系统提示注册「任务完成自动推送」约定
  *     （见 src/prompt.ts），并按 pushMode 注册宿主侧自动推送（见 src/auto-push.ts）。
  *
  * 执行期行为：
@@ -57,11 +57,11 @@ export const Config = SchemaBuilder.object({
         .volatile(),
 });
 /** 插件 ID / Cordis 插件名（与 npm 包名、仓库名保持全局统一） */
-export const name = 'meow-push-bridge';
+export const name = 'dsh-junjun-transit';
 /** 依赖 tools 服务：缺少时 Cordis 不会激活本插件（而非半激活） */
 export const inject = ['tools'];
 /** 工具名 */
-export const TOOL_NAME = 'meow_push_bridge';
+export const TOOL_NAME = 'dsh_junjun_transit';
 /**
  * 安全读取一个**可选**宿主服务。
  *

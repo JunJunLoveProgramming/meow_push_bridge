@@ -42,7 +42,7 @@ test('sendBark：发送 JSON 并在 80000000 时成功', async () => {
 
   try {
     const result = await sendBark(
-      { ...BASE, token: 'tok_123', sender: '喵桥' },
+      { ...BASE, token: 'tok_123', sender: '骏骏通知中转' },
       {
         title: '测试标题',
         text: '测试内容',
@@ -57,7 +57,7 @@ test('sendBark：发送 JSON 并在 80000000 时成功', async () => {
     assert.equal(body?.['msg'], '测试内容')
     assert.equal(body?.['issecure'], 0)
     assert.equal(body?.['msgType'], 1)
-    assert.equal(body?.['sender'], '喵桥')
+    assert.equal(body?.['sender'], '骏骏通知中转')
     assert.equal(body?.['icon'], 'https://example.com/icon.png')
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()))

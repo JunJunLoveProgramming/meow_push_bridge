@@ -127,7 +127,7 @@ test('every-turn：轮次结束即推送，且统计本轮工具调用', async (
   await flush()
 
   assert.equal(pushes.length, 1, '应推送一条')
-  assert.equal(pushes[0]?.title, 'MeoW Push Bridge', '自动推送使用统一的默认标题')
+  assert.equal(pushes[0]?.title, '骏骏消息中转', '自动推送使用统一的默认标题')
   assert.match(pushes[0]?.message ?? '', /调用 3 次工具/)
   assert.match(pushes[0]?.message ?? '', /pwsh/)
 })

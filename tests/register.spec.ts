@@ -4,7 +4,7 @@
  * 对应需求：
  *   1. 加载期必须要求 nickname；
  *   2. nickname 缺失/空白 → 不注册工具，且给出明确错误提示；
- *   3. 配置合法 → 注册名为 meow_push_bridge 的工具，schema 正确、nickname 不在入参里；
+ *   3. 配置合法 → 注册名为 dsh_junjun_transit 的工具，schema 正确、nickname 不在入参里；
  *   4. 包自有不变式全部通过。
  *
  * 运行：pnpm test
@@ -86,9 +86,9 @@ const VALID_CONFIG = { nickname: 'chuck' }
 // ─────────────────────── 1. 导出契约 ───────────────────────
 
 test('导出契约：name / inject / 工具名符合全局统一标识', () => {
-  assert.equal(name, 'meow-push-bridge')
+  assert.equal(name, 'dsh-junjun-transit')
   assert.deepEqual(inject, ['tools'])
-  assert.equal(TOOL_NAME, 'meow_push_bridge')
+  assert.equal(TOOL_NAME, 'dsh_junjun_transit')
 })
 
 // ─────────────── 2. nickname 缺失 → 仍注册（可仅用 SMTP）───────────
@@ -125,14 +125,14 @@ test('ctx.config 为空但 apply 第二参数带配置 → 采用注入配置', 
 
 // ─────────────── 3. 配置合法 → 正常注册 ───────────────
 
-test('配置合法 → 注册 meow_push_bridge，schema 与描述正确', () => {
+test('配置合法 → 注册 dsh_junjun_transit，schema 与描述正确', () => {
   const { ctx, registered, logs } = createContext({ config: VALID_CONFIG })
   apply(ctx)
 
   assert.equal(registered.length, 1, '应恰好注册一个工具')
   const tool = registered[0]
   assert.ok(tool !== undefined)
-  assert.equal(tool.name, 'meow_push_bridge')
+  assert.equal(tool.name, 'dsh_junjun_transit')
   assert.ok(tool.description.includes('MeoW'), '描述需说明用途')
 
   const parameters = tool.parameters as {
@@ -234,11 +234,11 @@ test('包自有不变式：能捕获违规定义（反向验证检查器有效�
   )
   const ids = violations.map((violation) => violation.id)
   // 5 条不变式报警（昵称允许为空，runtime-config 不再因空昵称报警）
-  assert.ok(ids.includes('meow-push-bridge/plugin-id'))
-  assert.ok(ids.includes('meow-push-bridge/inject-tools'))
-  assert.ok(ids.includes('meow-push-bridge/tool-name'))
-  assert.ok(ids.includes('meow-push-bridge/schema-required-message'))
-  assert.ok(ids.includes('meow-push-bridge/schema-no-nickname'))
+  assert.ok(ids.includes('dsh-junjun-transit/plugin-id'))
+  assert.ok(ids.includes('dsh-junjun-transit/inject-tools'))
+  assert.ok(ids.includes('dsh-junjun-transit/tool-name'))
+  assert.ok(ids.includes('dsh-junjun-transit/schema-required-message'))
+  assert.ok(ids.includes('dsh-junjun-transit/schema-no-nickname'))
 })
 
 // ───────────── Cordis 服务访问纪律（回归） ─────────────

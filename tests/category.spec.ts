@@ -11,7 +11,7 @@ import { DEFAULT_ICON_URL } from '../dist/member-auth.ts'
 test('默认通知图标固定为会员站点上传的 PNG', () => {
   assert.equal(
     DEFAULT_ICON_URL,
-    'https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png',
+    'https://www.junjunloveprogramming.cn/upload/dsh-junjun-transit-logo.png',
   )
 })
 

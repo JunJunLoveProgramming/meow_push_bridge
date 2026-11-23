@@ -14,7 +14,7 @@ test('stripRuntimeContext：截掉 DSH 追加的英文运行时上下文', () =>
     '',
     'Time sampled while preparing turn 112, step 39: 2026-11-16T21:22:39+08:00[Asia/Shanghai]',
     'Current runtime context. This snapshot supersedes earlier runtime-context snapshots.',
-    'Current working directory: "D:\\meow_push_bridge"',
+    'Current working directory: "D:\\dsh_junjun_transit"',
     'Approval prompts are enabled in this session.',
   ].join('\n')
 
