@@ -88,15 +88,18 @@ const REMOVED_KEYS = [
 export function resolveConfig(raw, warn) {
     const table = raw !== null && typeof raw === 'object' ? raw : {};
     const nicknameRaw = table['nickname'];
-    if (!isNonEmptyString(nicknameRaw)) {
-        throw new ConfigError(MEOW_NICKNAME_REQUIRED, 'nickname', MEOW_NICKNAME_REQUIRED_MESSAGE);
+    let nickname = '';
+    if (isNonEmptyString(nicknameRaw)) {
+        nickname = nicknameRaw.trim();
     }
-    const nickname = nicknameRaw.trim();
-    if (looksLikeTemplate(nickname)) {
+    else {
+        warn?.('MeoW 昵称未配置：MeoW 通道不会启用；如果已配置 SMTP，仍可单独使用邮件推送。');
+    }
+    if (nickname !== '' && looksLikeTemplate(nickname)) {
         warn?.(`nickname 看起来包含未展开的占位符 "${nickname}"：cordis.patch.yml 不会展开环境变量，请填写字面量昵称。`);
     }
     // 官方文档明确要求昵称不允许包含斜杠（否则会触发路径编码 400）
-    if (nickname.includes('/')) {
+    if (nickname !== '' && nickname.includes('/')) {
         warn?.('nickname 含斜杠：MeoW 文档要求昵称不允许包含斜杠，推送时斜杠会被替换为全角 ／。');
     }
     // 旧配置里的已移除字段：提示一次，避免用户以为它们还有效
@@ -109,7 +112,7 @@ export function resolveConfig(raw, warn) {
     // 它们由会员登录后的宿主存储与云端提供，避免非会员手改配置绕过会员限制。
     for (const key of ['title', 'imgUrl', 'category']) {
         if (table[key] !== undefined) {
-            warn?.(`配置里的 ${key} 已不再生效：主题请在「喵桥」设置页登录会员后填写。`);
+            warn?.(`配置里的 ${key} 已不再生效：主题请在「喵桥」设置页填写（本机保存）。`);
         }
     }
     return { nickname };

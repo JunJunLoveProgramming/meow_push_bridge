@@ -6,6 +6,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { buildMeowBody, buildMeowUrl, normalizePushCategory } from '../dist/meow-api.ts'
+import { DEFAULT_ICON_URL } from '../dist/member-auth.ts'
+
+test('默认通知图标固定为会员站点上传的 PNG', () => {
+  assert.equal(
+    DEFAULT_ICON_URL,
+    'https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png',
+  )
+})
 
 test('normalizePushCategory：去空白、空值不发送、最多 10 字', () => {
   assert.equal(normalizePushCategory('  dsh插件  '), 'dsh插件')

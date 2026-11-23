@@ -37,6 +37,23 @@ export const THEME_CREDENTIAL_REF = 'MEOW_PUSH_BRIDGE_MEMBER_THEME'
 /** 默认自定义分类（非会员固定；会员默认值） */
 export const DEFAULT_CATEGORY = 'dsh插件'
 
+/** 默认通知图标：未设置自定义图标时使用 */
+export const DEFAULT_ICON_URL =
+  'https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png'
+
+/** 旧默认图标（已失效）；读取到旧值时自动迁移到新地址 */
+const LEGACY_ICON_URLS: readonly string[] = [
+  'https://www.junjunloveprogramming.cn/images/meow_push_bridge_logo.png',
+  'https://meowpushbridge.junjunloveprogramming.cn/uploads/mpb_20261116_d680dc09cfa3ec17.png',
+]
+
+/** 归一化主题图标：空值/旧默认值 → 新默认图标 */
+function normalizeThemeIcon(value: string): string {
+  const text = value.trim()
+  if (text === '' || LEGACY_ICON_URLS.includes(text)) return DEFAULT_ICON_URL
+  return text
+}
+
 /** 分类最大长度（MeoW 文档：10 个字） */
 export const MAX_CATEGORY_LENGTH = 10
 
@@ -343,7 +360,7 @@ function isThemeSettings(value: unknown): value is ThemeSettings {
   return typeof table['title'] === 'string' && typeof table['imgUrl'] === 'string'
 }
 
-async function readStoredTheme(ctx: MemberAuthHost): Promise<ThemeSettings | null> {
+export async function readStoredTheme(ctx: MemberAuthHost): Promise<ThemeSettings | null> {
   if (memoryTheme !== null) return memoryTheme
   const credentials = readService<CredentialsLike>(ctx, 'credentials')
   if (credentials !== undefined) {
@@ -356,7 +373,7 @@ async function readStoredTheme(ctx: MemberAuthHost): Promise<ThemeSettings | nul
           memoryTheme = {
             nickname: typeof theme.nickname === 'string' ? theme.nickname : '',
             title: theme.title,
-            imgUrl: theme.imgUrl,
+            imgUrl: normalizeThemeIcon(theme.imgUrl),
             category: normalizeCategory(theme.category) ?? DEFAULT_CATEGORY,
           }
           return memoryTheme
@@ -402,35 +419,30 @@ async function clearStoredTheme(ctx: MemberAuthHost): Promise<void> {
 export async function getEffectiveTheme(
   ctx: MemberAuthHost,
 ): Promise<{ title: string; imgUrl: string; category: string }> {
-  const session = await readSession(ctx)
-  if (session === null) {
-    return { title: '', imgUrl: '', category: DEFAULT_CATEGORY }
-  }
+  // 主题属于本机设置：即使取消会员授权也继续生效
   const theme = await readStoredTheme(ctx)
   if (theme === null) {
-    return { title: '', imgUrl: '', category: DEFAULT_CATEGORY }
+    return { title: '', imgUrl: DEFAULT_ICON_URL, category: DEFAULT_CATEGORY }
   }
   return {
     title: theme.title,
-    imgUrl: theme.imgUrl,
+    imgUrl: normalizeThemeIcon(theme.imgUrl),
     category: normalizeCategory(theme.category) ?? DEFAULT_CATEGORY,
   }
 }
 
-/** 保存会员主题（仅宿主存储，不写 profile） */
+/** 保存主题（本机始终可用；云端同步另需会员登录） */
 export async function saveTheme(
   ctx: MemberAuthHost,
   input: unknown,
 ): Promise<{ ok: boolean; theme?: ThemeSettings; error?: string }> {
-  const session = await readSession(ctx)
-  if (session === null) return { ok: false, error: '主题是会员功能，请先登录会员' }
-
   const checked = validateTheme(input, false)
   if (!checked.ok) return { ok: false, error: checked.error }
 
   const theme = checked.theme
   await writeStoredTheme(ctx, theme)
-  trace(`theme saved user=${session.username} category=${theme.category}`)
+  const session = await readSession(ctx)
+  trace(`theme saved user=${session?.username ?? 'local'} category=${theme.category}`)
   return { ok: true, theme }
 }
 
@@ -619,10 +631,11 @@ export async function downloadTheme(
   if (value === null || typeof value !== 'object') return { ok: false, error: '云端主题为空' }
 
   const table = value as Record<string, unknown>
+  const rawImg = typeof table['imgUrl'] === 'string' ? table['imgUrl'].trim() : ''
   const theme: ThemeSettings = {
     nickname: typeof table['nickname'] === 'string' ? table['nickname'] : '',
     title: typeof table['title'] === 'string' ? table['title'] : '',
-    imgUrl: typeof table['imgUrl'] === 'string' ? table['imgUrl'] : '',
+    imgUrl: normalizeThemeIcon(rawImg),
     category: normalizeCategory(table['category']) ?? DEFAULT_CATEGORY,
   }
   await writeStoredTheme(ctx, theme)
@@ -746,8 +759,8 @@ export function registerMemberRoutes(
         if (path === '/theme' && (method === 'GET' || method === 'POST')) {
           if (method === 'GET') {
             const session = await readSession(ctx)
-            let theme = session === null ? null : await readStoredTheme(ctx)
-            // 首次进入/重启后，从云端恢复会员主题
+            let theme = await readStoredTheme(ctx)
+            // 已登录且本机还没有主题时，从云端恢复
             if (session !== null && theme === null) {
               const cloud = await downloadTheme(ctx)
               if (cloud.ok && cloud.theme !== undefined) theme = cloud.theme
@@ -757,8 +770,8 @@ export function registerMemberRoutes(
               authorized: session !== null,
               theme:
                 theme === null
-                  ? { nickname: '', title: '', imgUrl: '', category: DEFAULT_CATEGORY }
-                  : theme,
+                  ? { nickname: '', title: '', imgUrl: DEFAULT_ICON_URL, category: DEFAULT_CATEGORY }
+                  : { ...theme, imgUrl: normalizeThemeIcon(theme.imgUrl) },
             })
             return
           }
@@ -901,8 +914,8 @@ export function registerMemberRoutes(
           const session = await readSession(ctx)
           if (session !== null) await revokeRemote(session)
           await clearSession(ctx)
-          await clearStoredTheme(ctx)
-          log('info', '已取消会员授权并清除本地令牌。')
+          // 只清授权，不清主题：取消会员后本机主题仍可继续使用
+          log('info', '已取消会员授权并清除本地令牌（本机主题保留）。')
           json(res, 200, { ok: true })
           return
         }

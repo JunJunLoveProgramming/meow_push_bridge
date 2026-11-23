@@ -20,7 +20,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
-  ConfigError,
   TOOL_NAME,
   apply,
   checkThrottle,
@@ -30,8 +29,6 @@ import {
 } from '../dist/index.ts'
 import {
   FIXED_REQUEST,
-  MEOW_NICKNAME_REQUIRED,
-  MEOW_NICKNAME_REQUIRED_MESSAGE,
   resolveConfig,
 } from '../dist/config.ts'
 import { assertInvariants, createInvariants, registerInvariants } from '../dist/invariant.ts'
@@ -94,30 +91,23 @@ test('导出契约：name / inject / 工具名符合全局统一标识', () => {
   assert.equal(TOOL_NAME, 'meow_push_bridge')
 })
 
-// ─────────────── 2. nickname 缺失 → 不注册工具 ───────────────
+// ─────────────── 2. nickname 缺失 → 仍注册（可仅用 SMTP）───────────
 
 for (const [label, config] of [
   ['缺省空对象', {}],
   ['空字符串', { nickname: '' }],
   ['全空白字符串', { nickname: '   ' }],
   ['null', { nickname: null }],
-  ['数字类型', { nickname: 42 }],
 ] as const) {
-  test(`nickname 缺失（${label}）→ 记录 error 且不注册任何工具`, () => {
+  test(`nickname 缺失（${label}）→ 仍注册工具并警告只启用 SMTP`, () => {
     const { ctx, registered, logs } = createContext({ config })
     apply(ctx)
 
-    assert.equal(registered.length, 0, '不得注册任何工具')
-    const errors = logs.filter((entry) => entry.level === 'error')
-    assert.ok(errors.length >= 1, '必须至少记录一条 error 日志')
+    assert.equal(registered.length, 1, '应注册工具，允许仅用 SMTP')
+    const warnings = logs.filter((entry) => entry.level === 'warn')
     assert.ok(
-      errors.some((entry) => entry.message.includes(MEOW_NICKNAME_REQUIRED_MESSAGE)),
-      `错误日志需包含约定提示："${MEOW_NICKNAME_REQUIRED_MESSAGE}"`,
-    )
-    // 提示里要告诉用户去哪改
-    assert.ok(
-      errors.some((entry) => entry.message.includes('cordis.patch.yml') && entry.message.includes('nickname')),
-      '错误日志需指明 cordis.patch.yml 中的 nickname 字段',
+      warnings.some((entry) => entry.message.includes('MeoW 昵称未配置')),
+      '应警告 MeoW 通道未启用',
     )
   })
 }
@@ -243,13 +233,12 @@ test('包自有不变式：能捕获违规定义（反向验证检查器有效�
     }),
   )
   const ids = violations.map((violation) => violation.id)
-  // 6 条不变式应全部报警（空昵称触发 runtime-config 一次）
+  // 5 条不变式报警（昵称允许为空，runtime-config 不再因空昵称报警）
   assert.ok(ids.includes('meow-push-bridge/plugin-id'))
   assert.ok(ids.includes('meow-push-bridge/inject-tools'))
   assert.ok(ids.includes('meow-push-bridge/tool-name'))
   assert.ok(ids.includes('meow-push-bridge/schema-required-message'))
   assert.ok(ids.includes('meow-push-bridge/schema-no-nickname'))
-  assert.ok(ids.includes('meow-push-bridge/runtime-config'))
 })
 
 // ───────────── Cordis 服务访问纪律（回归） ─────────────
@@ -317,7 +306,7 @@ test('sessions 服务缺失时：仍注册工具，自动推送降级为统计�
   const { ctx, registered, reads } = createStrictContext({ nickname: 'chuck' })
   apply(ctx)
   assert.equal(registered.length, 1)
-  assert.deepEqual(reads, ['webServer', 'sessions'], '应查询 webServer 与 sessions 各一次')
+  assert.deepEqual(reads, ['webServer', 'sessions'], '推送设置路由取 webServer，自动推送取 sessions')
 })
 
 test('sessions 服务存在时：不会因为包装会话而抛错', () => {
@@ -381,19 +370,11 @@ test('resolveConfig：旧配置里的已移除字段被忽略并给出 warn（�
   }
 })
 
-test('resolveConfig：非字符串 nickname 抛 ConfigError(MEOW_NICKNAME_REQUIRED)', () => {
-  const error = (() => {
-    try {
-      resolveConfig({ nickname: undefined })
-      return undefined
-    } catch (caught) {
-      return caught
-    }
-  })()
-  assert.ok(error instanceof ConfigError)
-  assert.equal(error.code, MEOW_NICKNAME_REQUIRED)
-  assert.equal(error.field, 'nickname')
-  assert.equal(error.message, MEOW_NICKNAME_REQUIRED_MESSAGE)
+test('resolveConfig：昵称缺失时返回空昵称并 warn（可仅用 SMTP）', () => {
+  const warnings: string[] = []
+  const config = resolveConfig({ nickname: undefined }, (message) => warnings.push(message))
+  assert.equal(config.nickname, '')
+  assert.ok(warnings.some((message) => message.includes('MeoW 昵称未配置')))
 })
 
 test('resolveConfig：占位符昵称会触发 warn（但不禁用插件）', () => {

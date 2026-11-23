@@ -23,6 +23,8 @@ export declare const CREDENTIAL_REF = "MEOW_PUSH_BRIDGE_MEMBER_TOKEN";
 export declare const THEME_CREDENTIAL_REF = "MEOW_PUSH_BRIDGE_MEMBER_THEME";
 /** 默认自定义分类（非会员固定；会员默认值） */
 export declare const DEFAULT_CATEGORY = "dsh\u63D2\u4EF6";
+/** 默认通知图标：未设置自定义图标时使用 */
+export declare const DEFAULT_ICON_URL = "https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png";
 /** 分类最大长度（MeoW 文档：10 个字） */
 export declare const MAX_CATEGORY_LENGTH = 10;
 export interface MemberSession {
@@ -67,6 +69,7 @@ export declare function buildAuthorizeUrl(origin: string, state: string, challen
 export declare function openExternal(ctx: MemberAuthHost, url: string): Promise<boolean>;
 /** 分类规范化：去空白；空 → 默认 dsh插件；最多 10 字且不含控制字符 */
 export declare function normalizeCategory(value: unknown): string | null;
+export declare function readStoredTheme(ctx: MemberAuthHost): Promise<ThemeSettings | null>;
 /**
  * 推送实际使用的主题：
  * - 未登录 → 固定默认（category = dsh插件）
@@ -78,7 +81,7 @@ export declare function getEffectiveTheme(ctx: MemberAuthHost): Promise<{
     imgUrl: string;
     category: string;
 }>;
-/** 保存会员主题（仅宿主存储，不写 profile） */
+/** 保存主题（本机始终可用；云端同步另需会员登录） */
 export declare function saveTheme(ctx: MemberAuthHost, input: unknown): Promise<{
     ok: boolean;
     theme?: ThemeSettings;

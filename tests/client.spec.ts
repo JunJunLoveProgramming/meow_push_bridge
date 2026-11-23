@@ -358,7 +358,6 @@ test('设置页只保留「昵称」一个字段，且不再出现已移除的�
     'timeout',
     'throttleMs',
     'pushMode',
-    'msgType',
     'htmlHeight',
     'imgUrl',
     'every-turn',
@@ -369,11 +368,11 @@ test('设置页只保留「昵称」一个字段，且不再出现已移除的�
   }
 })
 
-test('设置页页脚包含版权与 QQ 交流群', async () => {
+test('设置页页脚包含版权与 QQ用户沟通群', async () => {
   const text = (await renderTab()).join('')
   assert.ok(text.includes('2026'), '页脚应含版权年份')
   assert.ok(text.includes('骏骏爱编程'), '页脚应含作者')
-  assert.ok(text.includes('1051489523'), '页脚应含 QQ 群号')
+  assert.ok(text.includes('1026696694'), '页脚应含 QQ 群号')
 })
 
 test('字典只保留昵称相关的键，已移除字段的死键已清理', () => {
@@ -384,8 +383,8 @@ test('字典只保留昵称相关的键，已移除字段的死键已清理', ()
     assert.ok(new RegExp(`${key}: '([^']*)'`).test(source), `缺少字典键：${key}`)
   }
   // 已移除字段的键不应再存在
-  for (const key of ['apiBase', 'pushMode', 'msgType', 'htmlHeight', 'timeout']) {
+  for (const key of ['apiBase', 'pushMode', 'htmlHeight', 'timeout']) {
     assert.ok(!new RegExp(`^\\s+${key}: '`, 'm').test(source), `字典里仍有死键：${key}`)
   }
-  assert.ok(source.includes('QQ 交流群：1051489523'))
+  assert.ok(source.includes('QQ用户沟通群：1026696694'))
 })
