@@ -38,11 +38,10 @@ window.__ModuleLoader__.load({
     const zh = {
       tab: '喵桥',
       title: '喵桥 · MeoW 推送',
-      intro: '配置完成后，Agent 可以调用 meow_push_bridge 工具把通知推送到你的鸿蒙手机。',
       nickname: 'MeoW 昵称',
       nicknameHint: '必填。对应推送地址 https://api.chuckfang.com/{昵称}/… 的第一段。官方文档：昵称不允许包含斜杠。留空则不会注册推送工具。',
-      memberTitle: '会员主题',
-      memberIntro: '主题设置是会员功能：登录后可自定义 MeoW 通知标题与图标 URL，并同步到云端。',
+      memberTitle: '主题设置',
+      memberIntro: '登录会员可把主题同步到云端；不登录也可以在本机设置并使用主题。',
       loginMember: '登录会员',
       loggingIn: '等待浏览器授权…',
       openingBrowser: '正在打开浏览器…',
@@ -55,21 +54,65 @@ window.__ModuleLoader__.load({
       loggedInAs: '已登录',
       notMember: '未登录会员',
       themeTitle: 'MeoW 通知标题',
-      themeTitleHint: '会员主题。留空时使用默认标题「MeoW Push Bridge」。',
+      themeTitleHint: '主题。留空时使用默认标题「MeoW Push Bridge」。',
       themeIcon: '自定义图标 URL',
-      themeIconHint: '会员主题。官方建议 216×216 PNG；留空则不附加图标。',
+      themeIconHint: '主题。官方建议 216×216 PNG；留空则使用默认图标。',
       themeCategory: '自定义分类',
-      themeCategoryHint: '会员主题。默认「dsh插件」，最多 10 个字；非会员固定为 dsh插件。',
+      themeCategoryHint: '主题。默认「dsh插件」，最多 10 个字。',
       syncUpload: '同步到云端',
       syncDownload: '从云端导入',
       syncing: '同步中…',
       syncUploaded: '主题已同步到云端。',
       syncImported: '已从云端导入主题。',
       syncEmpty: '云端还没有保存过主题。',
-      memberOnly: '登录会员后才能显示主题设置。',
+      memberOnly: '未登录也可在本机使用主题；云端同步需要登录会员。',
       authFailed: '会员登录失败：',
+      pushChannel: '推送方式',
+      statusConfigured: '已配置',
+      statusUnconfigured: '未配置',
+      channelMeow: 'MeoW 推送',
+      meowIntro: '填写 MeoW 昵称后即可通过手机通知接收消息；主题会随通知生效。',
+      meowSave: '保存 MeoW 设置',
+      meowTest: '发送测试消息',
+      channelSmtp: '邮件推送（SMTP）',
+      channelBark: 'Bark 推送',
+      barkTitle: 'Bark 推送设置',
+      barkIntro: '在 Bark App 中复制 token；title/msg/url/token 按文档发送，issecure 固定为 0。',
+      barkToken: 'Bark token',
+      barkTitleField: '通知标题',
+      barkIcon: '通知图标 URL',
+      barkSender: '发送者名称',
+      barkTokenKeep: 'Bark token 以明文显示，保存在本机安全存储。',
+      barkSave: '保存 Bark 设置',
+      barkTest: '发送测试消息',
+      barkSaved: 'Bark 设置已保存。',
+      barkTestOk: 'Bark 测试消息已发送，请查收。',
+      channelSaved: '推送方式已切换。',
+      channelFailed: '切换失败：',
+      smtpTitle: 'SMTP 邮件设置',
+      smtpIntro: '邮件正文使用与 MeoW 相同的中文摘要，纯文本发送。密码保存在宿主安全存储，不写入 profile。',
+      smtpHost: 'SMTP 服务器',
+      smtpPort: '端口',
+      smtpEncryption: '加密方式',
+      smtpEncryptionTls: 'SSL/TLS（465）',
+      smtpEncryptionStarttls: 'STARTTLS（587，推荐）',
+      smtpEncryptionNone: '不加密（25）',
+      smtpUsername: '用户名',
+      smtpPassword: '密码',
+      smtpPasswordKeep: '留空表示保持已保存的密码',
+      smtpFromEmail: '发件人邮箱',
+      smtpFromName: '发件人名称',
+      smtpToEmail: '收件人邮箱',
+      smtpSave: '保存邮件设置',
+      smtpTest: '发送测试邮件',
+      smtpSaved: '邮件设置已保存。',
+      smtpTestOk: '测试邮件已发送，请查收。',
+      smtpMissing: '请先填写 SMTP 服务器和收件人邮箱。',
       fixedNote: '其余请求细节（HTTPS 地址、POST 方法、10 秒超时、纯文本格式、每轮自动推送）已按官方推荐值固化，无需配置。',
       save: '保存',
+      clearing: '清空中…',
+      clear: '清空配置',
+      cleared: '已清空，状态已变为未配置。',
       saving: '保存中…',
       saved: '已保存，插件已热应用。',
       failed: '保存失败：',
@@ -77,16 +120,16 @@ window.__ModuleLoader__.load({
       missing: '宿主未提供本插件的配置命名空间，请确认插件已启用。',
       openDocument: '打开配置文件',
       copyright: '© 2026 骏骏爱编程 · MIT 开源许可',
-      qqGroup: 'QQ 交流群：1051489523',
+      qqGroup: 'QQ用户沟通群：1026696694',
+      sponsor: '赞助方案',
     }
     const en = {
       tab: 'MeoW Bridge',
       title: 'MeoW Push Bridge',
-      intro: 'Once configured, the Agent can push notifications to your HarmonyOS phone via meow_push_bridge.',
       nickname: 'MeoW nickname',
       nicknameHint: 'Required. The first path segment of https://api.chuckfang.com/{nickname}/… The spec forbids slashes in a nickname. Leave it empty and the tool is not registered.',
-      memberTitle: 'Member theme',
-      memberIntro: 'Theme settings are a member feature: sign in to set a notification title and icon URL, and sync them to the cloud.',
+      memberTitle: 'Theme settings',
+      memberIntro: 'Sign in to sync the theme to the cloud; the theme can also be set and used locally without signing in.',
       loginMember: 'Sign in as member',
       loggingIn: 'Waiting for browser authorization…',
       openingBrowser: 'Opening the browser…',
@@ -99,21 +142,65 @@ window.__ModuleLoader__.load({
       loggedInAs: 'Signed in as',
       notMember: 'Not signed in',
       themeTitle: 'MeoW notification title',
-      themeTitleHint: 'Member theme. Empty uses the default title "MeoW Push Bridge".',
+      themeTitleHint: 'Theme. Empty uses the default title "MeoW Push Bridge".',
       themeIcon: 'Custom icon URL',
-      themeIconHint: 'Member theme. 216×216 PNG recommended; empty adds no icon.',
+      themeIconHint: 'Theme. 216×216 PNG recommended; empty uses the default icon.',
       themeCategory: 'Custom category',
-      themeCategoryHint: 'Member theme. Defaults to “dsh插件”, max 10 characters; fixed for non-members.',
+      themeCategoryHint: 'Theme. Defaults to “dsh插件”, max 10 characters.',
       syncUpload: 'Sync to cloud',
       syncDownload: 'Import from cloud',
       syncing: 'Syncing…',
       syncUploaded: 'Theme synced to the cloud.',
       syncImported: 'Theme imported from the cloud.',
       syncEmpty: 'No theme saved in the cloud yet.',
-      memberOnly: 'Theme settings appear after you sign in as a member.',
+      memberOnly: 'The theme works locally without signing in; cloud sync requires a member account.',
       authFailed: 'Member sign-in failed: ',
+      pushChannel: 'Delivery method',
+      statusConfigured: 'Configured',
+      statusUnconfigured: 'Not configured',
+      channelMeow: 'MeoW push',
+      meowIntro: 'Fill in the MeoW nickname to receive phone notifications; the theme applies to them.',
+      meowSave: 'Save MeoW settings',
+      meowTest: 'Send test message',
+      channelSmtp: 'Email (SMTP)',
+      channelBark: 'Bark push',
+      barkTitle: 'Bark push settings',
+      barkIntro: 'Copy the token from the Bark app. title/msg/url/token follow the API; issecure is fixed to 0.',
+      barkToken: 'Bark token',
+      barkTitleField: 'Notification title',
+      barkIcon: 'Notification icon URL',
+      barkSender: 'Sender name',
+      barkTokenKeep: 'The Bark token is shown in plain text and kept in local secure storage.',
+      barkSave: 'Save Bark settings',
+      barkTest: 'Send test message',
+      barkSaved: 'Bark settings saved.',
+      barkTestOk: 'Bark test message sent.',
+      channelSaved: 'Delivery method updated.',
+      channelFailed: 'Switch failed: ',
+      smtpTitle: 'SMTP email settings',
+      smtpIntro: 'The email body uses the same Chinese summary as MeoW, sent as plain text. The password stays in host secure storage, never in the profile.',
+      smtpHost: 'SMTP server',
+      smtpPort: 'Port',
+      smtpEncryption: 'Encryption',
+      smtpEncryptionTls: 'SSL/TLS (465)',
+      smtpEncryptionStarttls: 'STARTTLS (587, recommended)',
+      smtpEncryptionNone: 'None (25)',
+      smtpUsername: 'Username',
+      smtpPassword: 'Password',
+      smtpPasswordKeep: 'Leave empty to keep the saved password',
+      smtpFromEmail: 'From email',
+      smtpFromName: 'From name',
+      smtpToEmail: 'To email',
+      smtpSave: 'Save email settings',
+      smtpTest: 'Send test email',
+      smtpSaved: 'Email settings saved.',
+      smtpTestOk: 'Test email sent; please check your inbox.',
+      smtpMissing: 'Fill in the SMTP server and recipient first.',
       fixedNote: 'All other request details (HTTPS base, POST, 10s timeout, plain text, auto-push every reply) are fixed to the spec-recommended values.',
       save: 'Save',
+      clearing: 'Clearing…',
+      clear: 'Clear config',
+      cleared: 'Cleared; status is now unconfigured.',
       saving: 'Saving…',
       saved: 'Saved; the plugin is applied live.',
       failed: 'Save failed: ',
@@ -121,7 +208,8 @@ window.__ModuleLoader__.load({
       missing: 'The host serves no configuration namespace for this plugin; make sure it is enabled.',
       openDocument: 'Open config file',
       copyright: '© 2026 JunJunLoveProgramming · MIT licensed',
-      qqGroup: 'QQ group: 1051489523',
+      qqGroup: 'QQ user group: 1026696694',
+      sponsor: 'Sponsorship',
     }
 
     /** 配置字段：只有昵称写入 profile */
@@ -171,6 +259,46 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = React.useState({})
       const [revision, setRevision] = React.useState(undefined)
       const [busy, setBusy] = React.useState(false)
+      const [tab, setTab] = React.useState('meow')
+      const [pushConfig, setPushConfig] = React.useState({
+        meow: { configured: false, detail: '未填写 MeoW 昵称' },
+        smtp: {
+          host: '',
+          port: 587,
+          encryption: 'starttls',
+          username: '',
+          fromEmail: '',
+          fromName: 'MeoW Push Bridge',
+          toEmail: '',
+          hasPassword: false,
+          status: { configured: false, detail: '未填写 SMTP 服务器或收件人' },
+        },
+        bark: {
+          sender: 'MeoW Push Bridge',
+          title: '',
+          icon: '',
+          status: { configured: false, detail: '未填写 Bark token' },
+        },
+      })
+      const [barkDraft, setBarkDraft] = React.useState({
+        token: '',
+        sender: 'MeoW Push Bridge',
+        title: '',
+        icon: '',
+      })
+      const [smtpDraft, setSmtpDraft] = React.useState({
+        host: '',
+        port: 587,
+        encryption: 'starttls',
+        username: '',
+        password: '',
+        fromEmail: '',
+        fromName: 'MeoW Push Bridge',
+        toEmail: '',
+      })
+      const [smtpBusy, setSmtpBusy] = React.useState(false)
+      const [smtpNote, setSmtpNote] = React.useState('')
+      const [smtpError, setSmtpError] = React.useState('')
       const [member, setMember] = React.useState({ phase: 'loading', authorized: false, account: null, message: '' })
       const [syncBusy, setSyncBusy] = React.useState('')
       const [memberNote, setMemberNote] = React.useState('')
@@ -196,11 +324,33 @@ window.__ModuleLoader__.load({
       }, [])
 
       React.useEffect(() => {
-        refreshMember()
-      }, [refreshMember])
+        fetch('/meow-push-bridge-api/push/config', { headers: { 'X-MPB-Client': '1' } })
+          .then((response) => readJson(response, '推送设置'))
+          .then((data) => {
+            if (!data || data.ok !== true) return
+            setPushConfig(data)
+            if (data.smtp) {
+              const smtpData = { ...data.smtp }
+              delete smtpData.status
+              setSmtpDraft((previous) => ({
+                ...previous,
+                ...smtpData,
+                password: '',
+              }))
+            }
+            if (data.bark) {
+              const barkData = { ...data.bark }
+              delete barkData.status
+              setBarkDraft((previous) => ({
+                ...previous,
+                ...barkData,
+              }))
+            }
+          })
+          .catch(() => {})
+      }, [])
 
       React.useEffect(() => {
-        if (!member.authorized) return undefined
         let cancelled = false
         fetch('/meow-push-bridge-api/theme', { headers: { 'X-MPB-Client': '1' } })
           .then((response) => readJson(response, '会员'))
@@ -223,21 +373,6 @@ window.__ModuleLoader__.load({
           cancelled = true
         }
       }, [member.authorized])
-
-      React.useEffect(() => {
-        if (member.phase !== 'pending') return undefined
-        let tries = 0
-        const timer = setInterval(() => {
-          tries += 1
-          if (tries > 200) {
-            clearInterval(timer)
-            setMember((previous) => ({ ...previous, phase: 'error', message: t('loginTimeout') }))
-            return
-          }
-          refreshMember()
-        }, 1500)
-        return () => clearInterval(timer)
-      }, [member.phase, refreshMember])
 
       // 由宿主拉起系统浏览器；若宿主失败或 8 秒无响应，自动跳转兜底。
       const startLogin = async () => {
@@ -288,8 +423,7 @@ window.__ModuleLoader__.load({
             headers: { 'X-MPB-Client': '1' },
           })
           setMember({ phase: 'anonymous', authorized: false, account: null, message: '' })
-          setDraft((previous) => ({ ...previous, title: '', imgUrl: '', category: 'dsh插件' }))
-          setMemberNote('已取消授权，主题恢复默认')
+          setMemberNote('已取消授权，本机主题继续保留')
         } catch (error) {
           setState({ phase: 'error', message: String((error && error.message) || error) })
         } finally {
@@ -440,7 +574,7 @@ window.__ModuleLoader__.load({
         setState({ phase: 'saving', message: '' })
         try {
           // 主题写入宿主存储（不写 profile），昵称仍写配置
-          if (member.authorized) {
+          {
             const themeResponse = await fetch('/meow-push-bridge-api/theme', {
               method: 'POST',
               headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
@@ -483,8 +617,8 @@ window.__ModuleLoader__.load({
         }
       }
 
-      /** 统一的字段行：标题 + 说明 + 输入框 */
-      const renderField = (field) => {
+      /** 统一的字段行：标题 + 说明 + 输入框（compact 用于通道面板，隐藏说明以保持三栏一致） */
+      const renderField = (field, compact) => {
         const invalid =
           field.kind === 'number' &&
           typeof draft[field.key] === 'string' &&
@@ -499,11 +633,13 @@ window.__ModuleLoader__.load({
             t(field.label),
             field.key === 'nickname' ? React.createElement('span', { style: { color: 'var(--dsw-alias-state-error-primary, #d4380d)' } }, ' *') : null,
           ),
-          React.createElement(
-            'span',
-            { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
-            t(field.hint),
-          ),
+          compact === true
+            ? null
+            : React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+                t(field.hint),
+              ),
           field.kind === 'select'
             ? React.createElement(
                 'select',
@@ -554,6 +690,737 @@ window.__ModuleLoader__.load({
                   setDraft((previous) => ({ ...previous, [field.key]: value }))
                 },
               }),
+        )
+      }
+
+      const updateSmtp = (key, value) => {
+        setSmtpDraft((previous) => ({ ...previous, [key]: value }))
+      }
+
+      const applyPushConfig = (data) => {
+        if (!data || data.ok !== true) return
+        setPushConfig(data)
+        if (data.smtp) {
+          const smtpData = { ...data.smtp }
+          delete smtpData.status
+          setSmtpDraft((previous) => ({ ...previous, ...smtpData, password: '' }))
+        }
+        if (data.bark) {
+          const barkData = { ...data.bark }
+          delete barkData.status
+          setBarkDraft((previous) => ({
+            ...previous,
+            ...barkData,
+          }))
+        }
+      }
+
+      const saveSmtp = async () => {
+        setSmtpBusy(true)
+        setSmtpNote('')
+        setSmtpError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/push/config', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ smtp: smtpDraft }),
+          })
+          const data = await readJson(response, '推送设置')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '保存失败')
+            return
+          }
+          applyPushConfig(data)
+          setSmtpNote(t('smtpSaved'))
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        } finally {
+          setSmtpBusy(false)
+        }
+      }
+
+      const saveBark = async () => {
+        setSmtpBusy(true)
+        setSmtpNote('')
+        setSmtpError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/push/config', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bark: barkDraft }),
+          })
+          const data = await readJson(response, '推送设置')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '保存失败')
+            return
+          }
+          applyPushConfig(data)
+          setSmtpNote(t('barkSaved'))
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        } finally {
+          setSmtpBusy(false)
+        }
+      }
+
+      const clearSmtp = async () => {
+        setSmtpBusy(true)
+        setSmtpNote('')
+        setSmtpError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/push/config', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ smtp: { clear: true } }),
+          })
+          const data = await readJson(response, '推送设置')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '清空失败')
+            return
+          }
+          applyPushConfig(data)
+          setSmtpNote(t('cleared'))
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        } finally {
+          setSmtpBusy(false)
+        }
+      }
+
+      const clearBark = async () => {
+        setSmtpBusy(true)
+        setSmtpNote('')
+        setSmtpError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/push/config', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bark: { clear: true } }),
+          })
+          const data = await readJson(response, '推送设置')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '清空失败')
+            return
+          }
+          applyPushConfig(data)
+          setSmtpNote(t('cleared'))
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        } finally {
+          setSmtpBusy(false)
+        }
+      }
+
+      const clearMeow = async () => {
+        setBusy(true)
+        setState({ phase: 'saving', message: '' })
+        try {
+          const result = await updateSettings({ nickname: '' }, revision)
+          if (!result || result.ok !== true) {
+            setState({
+              phase: 'error',
+              message: result && result.error ? `${result.error.code}: ${result.error.message}` : '清空失败',
+            })
+            return
+          }
+          const view = result.value
+          if (view !== undefined && view.revision !== undefined) setRevision(view.revision)
+          setDraft((previous) => ({ ...previous, nickname: '' }))
+          setPushConfig((previous) => ({
+            ...previous,
+            meow: { configured: false, detail: '未填写 MeoW 昵称' },
+          }))
+          setState({ phase: 'saved', message: '' })
+          setSmtpNote(t('cleared'))
+        } catch (error) {
+          setState({ phase: 'error', message: String((error && error.message) || error) })
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      const openSponsor = async () => {
+        try {
+          const response = await fetch('/meow-push-bridge-api/sponsor', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1' },
+          })
+          const data = await readJson(response, '赞助方案')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '打开赞助方案失败')
+          }
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        }
+      }
+
+      const testChannel = async (channel) => {
+        setSmtpBusy(true)
+        setSmtpNote('')
+        setSmtpError('')
+        try {
+          const response = await fetch('/meow-push-bridge-api/push/test', {
+            method: 'POST',
+            headers: { 'X-MPB-Client': '1', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channel }),
+          })
+          const data = await readJson(response, '推送设置')
+          if (!data || data.ok !== true) {
+            setSmtpError((data && data.error) || '发送失败')
+            return
+          }
+          setSmtpNote(channel === 'bark' ? t('barkTestOk') : t('smtpTestOk'))
+        } catch (error) {
+          setSmtpError(String((error && error.message) || error))
+        } finally {
+          setSmtpBusy(false)
+        }
+      }
+
+      const smtpInputStyle = {
+        padding: '6px 10px',
+        fontSize: '13px',
+        borderRadius: '6px',
+        border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+        background: 'var(--dsw-alias-bg-primary, #fff)',
+        color: 'var(--dsw-alias-label-primary, #1f1f1f)',
+        width: '100%',
+      }
+
+      const smtpField = (key, labelKey, type, placeholder) =>
+        React.createElement(
+          'label',
+          { key, style: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 } },
+          React.createElement('span', { style: { fontSize: '12px', fontWeight: 600 } }, t(labelKey)),
+          React.createElement('input', {
+            type: type || 'text',
+            value: smtpDraft[key] ?? '',
+            placeholder: placeholder || '',
+            disabled: smtpBusy,
+            style: smtpInputStyle,
+            onChange: (event) => updateSmtp(key, event.target.value),
+          }),
+        )
+
+      const renderChannelTabs = () => {
+        const items = [
+          { id: 'meow', label: t('channelMeow'), status: pushConfig.meow },
+          { id: 'smtp', label: t('channelSmtp'), status: pushConfig.smtp && pushConfig.smtp.status },
+          { id: 'bark', label: t('channelBark'), status: pushConfig.bark && pushConfig.bark.status },
+        ]
+        return React.createElement(
+          'div',
+          { key: 'push-channel', style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+          React.createElement('span', { style: { fontSize: '13px', fontWeight: 600 } }, t('pushChannel')),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+            items.map((item) => {
+              const configured = item.status && item.status.configured === true
+              return React.createElement(
+                'button',
+                {
+                  key: item.id,
+                  type: 'button',
+                  onClick: () => setTab(item.id),
+                  title: (item.status && item.status.detail) || '',
+                  style: {
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '6px 12px',
+                    fontSize: '13px',
+                    borderRadius: '6px',
+                    border: `1px solid ${item.id === tab ? 'var(--dsw-alias-state-info-primary, #1677ff)' : 'var(--dsw-alias-border-l2, #d9d9d9)'}`,
+                    background:
+                      item.id === tab
+                        ? 'var(--dsw-alias-state-info-primary, #1677ff)'
+                        : 'var(--dsw-alias-bg-primary, #fff)',
+                    color: item.id === tab ? '#fff' : 'var(--dsw-alias-label-primary, #1f1f1f)',
+                    cursor: 'pointer',
+                  },
+                },
+                React.createElement('span', {
+                  style: {
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    background: configured
+                      ? 'var(--dsw-alias-state-success-primary, #389e0d)'
+                      : 'var(--dsw-alias-state-error-primary, #d4380d)',
+                    boxShadow: configured
+                      ? '0 0 6px rgba(56, 158, 13, 0.6)'
+                      : '0 0 6px rgba(212, 56, 13, 0.55)',
+                  },
+                }),
+                item.label,
+                React.createElement(
+                  'span',
+                  { style: { fontSize: '11px', opacity: 0.85 } },
+                  configured ? t('statusConfigured') : t('statusUnconfigured'),
+                ),
+              )
+            }),
+          ),
+        )
+      }
+
+      const renderSmtpPanel = () =>
+        React.createElement(
+          'div',
+          {
+            key: 'smtp-panel',
+            style: {
+              border: '1px dashed var(--dsw-alias-border-l2, #d9d9d9)',
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              maxWidth: '620px',
+            },
+          },
+          React.createElement('h3', { style: { margin: 0, fontSize: '15px' } }, t('smtpTitle')),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px' } },
+            React.createElement('span', {
+              style: {
+                width: '9px',
+                height: '9px',
+                borderRadius: '50%',
+                display: 'inline-block',
+                background:
+                  pushConfig.smtp && pushConfig.smtp.status && pushConfig.smtp.status.configured
+                    ? 'var(--dsw-alias-state-success-primary, #389e0d)'
+                    : 'var(--dsw-alias-state-error-primary, #d4380d)',
+              },
+            }),
+            React.createElement(
+              'span',
+              { style: { color: 'var(--dsw-alias-label-secondary, #595959)' } },
+              pushConfig.smtp && pushConfig.smtp.status
+                ? pushConfig.smtp.status.detail
+                : t('statusUnconfigured'),
+            ),
+          ),
+          React.createElement(
+            'p',
+            { style: { margin: 0, fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+            t('smtpIntro'),
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' } },
+            smtpField('host', 'smtpHost', 'text', 'smtp.example.com'),
+            smtpField('port', 'smtpPort', 'number', '587'),
+            React.createElement(
+              'label',
+              { key: 'encryption', style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
+              React.createElement('span', { style: { fontSize: '12px', fontWeight: 600 } }, t('smtpEncryption')),
+              React.createElement(
+                'select',
+                {
+                  value: smtpDraft.encryption || 'starttls',
+                  disabled: smtpBusy,
+                  style: smtpInputStyle,
+                  onChange: (event) => updateSmtp('encryption', event.target.value),
+                },
+                React.createElement('option', { value: 'starttls' }, t('smtpEncryptionStarttls')),
+                React.createElement('option', { value: 'tls' }, t('smtpEncryptionTls')),
+                React.createElement('option', { value: 'none' }, t('smtpEncryptionNone')),
+              ),
+            ),
+            smtpField('username', 'smtpUsername', 'text', ''),
+            smtpField(
+              'password',
+              'smtpPassword',
+              'password',
+              pushConfig.smtp && pushConfig.smtp.hasPassword ? '••••••••' : '',
+            ),
+            smtpField('fromEmail', 'smtpFromEmail', 'email', 'noreply@example.com'),
+            smtpField('fromName', 'smtpFromName', 'text', 'MeoW Push Bridge'),
+            smtpField('toEmail', 'smtpToEmail', 'email', 'you@example.com'),
+          ),
+          React.createElement(
+            'span',
+            { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+            t('smtpPasswordKeep'),
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: smtpBusy,
+                onClick: saveSmtp,
+                style: { padding: '6px 14px', fontSize: '13px', borderRadius: '6px', cursor: smtpBusy ? 'default' : 'pointer' },
+              },
+              smtpBusy ? t('saving') : t('smtpSave'),
+            ),
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: smtpBusy,
+                onClick: () => testChannel('smtp'),
+                style: { padding: '6px 14px', fontSize: '13px', borderRadius: '6px', cursor: smtpBusy ? 'default' : 'pointer' },
+              },
+              t('smtpTest'),
+            ),
+          ),
+          smtpNote !== ''
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-success-primary, #389e0d)' } },
+                smtpNote,
+              )
+            : null,
+          smtpError !== ''
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d4380d)' } },
+                smtpError,
+              )
+            : null,
+        )
+
+      const barkField = (key, labelKey, type, placeholder) =>
+        React.createElement(
+          'label',
+          { key, style: { display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 } },
+          React.createElement('span', { style: { fontSize: '12px', fontWeight: 600 } }, t(labelKey)),
+          React.createElement('input', {
+            type: type || 'text',
+            value: barkDraft[key] ?? '',
+            placeholder: placeholder || '',
+            disabled: smtpBusy,
+            style: smtpInputStyle,
+            onChange: (event) => {
+              const value = event.target.value
+              setBarkDraft((previous) => ({ ...previous, [key]: value }))
+            },
+          }),
+        )
+
+      const panelStyle = {
+        border: '1px dashed var(--dsw-alias-border-l2, #d9d9d9)',
+        borderRadius: '8px',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        maxWidth: '620px',
+      }
+      const panelButtonStyle = {
+        padding: '6px 14px',
+        fontSize: '13px',
+        borderRadius: '6px',
+        border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+        background: 'var(--dsw-alias-bg-primary, #fff)',
+        color: 'var(--dsw-alias-label-primary, #1f1f1f)',
+        cursor: 'pointer',
+      }
+      const panelStatusRow = (status) => {
+        const configured = status && status.configured === true
+        return React.createElement(
+          'div',
+          { style: { display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px' } },
+          React.createElement('span', {
+            style: {
+              width: '9px',
+              height: '9px',
+              borderRadius: '50%',
+              display: 'inline-block',
+              background: configured
+                ? 'var(--dsw-alias-state-success-primary, #389e0d)'
+                : 'var(--dsw-alias-state-error-primary, #d4380d)',
+              boxShadow: configured
+                ? '0 0 6px rgba(56, 158, 13, 0.6)'
+                : '0 0 6px rgba(212, 56, 13, 0.55)',
+            },
+          }),
+          React.createElement(
+            'span',
+            { style: { color: 'var(--dsw-alias-label-secondary, #595959)' } },
+            status && status.detail ? status.detail : t('statusUnconfigured'),
+          ),
+        )
+      }
+      const renderUnifiedPanel = ({
+        key,
+        title,
+        intro,
+        status,
+        fields,
+        onSave,
+        saveLabel,
+        onTest,
+        testLabel,
+        onClear,
+        clearLabel,
+        saving,
+        note,
+        error,
+      }) =>
+        React.createElement(
+          'div',
+          { key, style: panelStyle },
+          React.createElement('h3', { style: { margin: 0, fontSize: '15px' } }, title),
+          panelStatusRow(status),
+          React.createElement(
+            'p',
+            { style: { margin: 0, fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+            intro,
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' } },
+            fields,
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: saving === true,
+                onClick: onSave,
+                style: { ...panelButtonStyle, cursor: saving === true ? 'default' : 'pointer' },
+              },
+              saving === true ? t('saving') : saveLabel,
+            ),
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: saving === true,
+                onClick: onTest,
+                style: { ...panelButtonStyle, cursor: saving === true ? 'default' : 'pointer' },
+              },
+              testLabel,
+            ),
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: saving === true,
+                onClick: onClear,
+                style: {
+                  ...panelButtonStyle,
+                  color: 'var(--dsw-alias-state-error-primary, #d4380d)',
+                  borderColor: 'var(--dsw-alias-state-error-primary, #d4380d)',
+                  cursor: saving === true ? 'default' : 'pointer',
+                },
+              },
+              clearLabel,
+            ),
+          ),
+          note !== '' && note !== undefined
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-success-primary, #389e0d)' } },
+                note,
+              )
+            : null,
+          error !== '' && error !== undefined
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d4380d)' } },
+                error,
+              )
+            : null,
+        )
+
+      const renderMeowPanel = () => {
+        const meowNote = state.phase === 'saved' ? t('saved') : smtpNote
+        const meowError =
+          state.phase === 'error' ? `${t('failed')} ${state.message}` : smtpError
+        return renderUnifiedPanel({
+          key: 'meow-panel',
+          title: t('channelMeow'),
+          intro: t('meowIntro'),
+          status: pushConfig.meow,
+          fields: [
+            ...FIELDS.map((field) => renderField(field, true)),
+            ...THEME_FIELDS.map((field) => renderField(field, true)),
+          ],
+          onSave: save,
+          saveLabel: t('meowSave'),
+          onTest: () => testChannel('meow'),
+          testLabel: t('meowTest'),
+          onClear: clearMeow,
+          clearLabel: t('clear'),
+          saving: busy || smtpBusy,
+          note: meowNote,
+          error: meowError,
+        })
+      }
+
+      const renderSmtpPanelUnified = () =>
+        renderUnifiedPanel({
+          key: 'smtp-panel',
+          title: t('smtpTitle'),
+          intro: t('smtpIntro'),
+          status: pushConfig.smtp && pushConfig.smtp.status,
+          fields: [
+            smtpField('host', 'smtpHost', 'text', 'smtp.example.com'),
+            smtpField('port', 'smtpPort', 'number', '587'),
+            React.createElement(
+              'label',
+              { key: 'encryption', style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
+              React.createElement('span', { style: { fontSize: '12px', fontWeight: 600 } }, t('smtpEncryption')),
+              React.createElement(
+                'select',
+                {
+                  value: smtpDraft.encryption || 'starttls',
+                  disabled: smtpBusy,
+                  style: smtpInputStyle,
+                  onChange: (event) => updateSmtp('encryption', event.target.value),
+                },
+                React.createElement('option', { value: 'starttls' }, t('smtpEncryptionStarttls')),
+                React.createElement('option', { value: 'tls' }, t('smtpEncryptionTls')),
+                React.createElement('option', { value: 'none' }, t('smtpEncryptionNone')),
+              ),
+            ),
+            smtpField('username', 'smtpUsername', 'text', ''),
+            smtpField(
+              'password',
+              'smtpPassword',
+              'password',
+              pushConfig.smtp && pushConfig.smtp.hasPassword ? '••••••••' : '',
+            ),
+            smtpField('fromEmail', 'smtpFromEmail', 'email', 'noreply@example.com'),
+            smtpField('fromName', 'smtpFromName', 'text', 'MeoW Push Bridge'),
+            smtpField('toEmail', 'smtpToEmail', 'email', 'you@example.com'),
+          ],
+          onSave: saveSmtp,
+          saveLabel: t('smtpSave'),
+          onTest: () => testChannel('smtp'),
+          testLabel: t('smtpTest'),
+          onClear: clearSmtp,
+          clearLabel: t('clear'),
+          saving: smtpBusy,
+          note: smtpNote,
+          error: smtpError,
+        })
+
+      const renderBarkPanelUnified = () =>
+        renderUnifiedPanel({
+          key: 'bark-panel',
+          title: t('barkTitle'),
+          intro: t('barkIntro'),
+          status: pushConfig.bark && pushConfig.bark.status,
+          fields: [
+            barkField('token', 'barkToken', 'text', ''),
+            barkField('title', 'barkTitleField', 'text', draft.title || 'MeoW Push Bridge'),
+            barkField('icon', 'barkIcon', 'url', draft.imgUrl || ''),
+            barkField('sender', 'barkSender', 'text', 'MeoW Push Bridge'),
+          ],
+          onSave: saveBark,
+          saveLabel: t('barkSave'),
+          onTest: () => testChannel('bark'),
+          testLabel: t('barkTest'),
+          onClear: clearBark,
+          clearLabel: t('clear'),
+          saving: smtpBusy,
+          note: smtpNote,
+          error: smtpError,
+        })
+
+      const renderBarkPanel = () => {
+        const configured = pushConfig.bark && pushConfig.bark.status && pushConfig.bark.status.configured
+        return React.createElement(
+          'div',
+          {
+            key: 'bark-panel',
+            style: {
+              border: '1px dashed var(--dsw-alias-border-l2, #d9d9d9)',
+              borderRadius: '8px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              maxWidth: '620px',
+            },
+          },
+          React.createElement('h3', { style: { margin: 0, fontSize: '15px' } }, t('barkTitle')),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px' } },
+            React.createElement('span', {
+              style: {
+                width: '9px',
+                height: '9px',
+                borderRadius: '50%',
+                display: 'inline-block',
+                background: configured
+                  ? 'var(--dsw-alias-state-success-primary, #389e0d)'
+                  : 'var(--dsw-alias-state-error-primary, #d4380d)',
+              },
+            }),
+            React.createElement(
+              'span',
+              { style: { color: 'var(--dsw-alias-label-secondary, #595959)' } },
+              pushConfig.bark && pushConfig.bark.status
+                ? pushConfig.bark.status.detail
+                : t('statusUnconfigured'),
+            ),
+          ),
+          React.createElement(
+            'p',
+            { style: { margin: 0, fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+            t('barkIntro'),
+          ),
+          barkField('token', 'barkToken', 'text', ''),
+          barkField('sender', 'barkSender', 'text', 'MeoW Push Bridge'),
+          React.createElement(
+            'span',
+            { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } },
+            t('barkTokenKeep'),
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: smtpBusy,
+                onClick: saveBark,
+                style: { padding: '6px 14px', fontSize: '13px', borderRadius: '6px', cursor: smtpBusy ? 'default' : 'pointer' },
+              },
+              smtpBusy ? t('saving') : t('barkSave'),
+            ),
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                disabled: smtpBusy,
+                onClick: () => testChannel('bark'),
+                style: { padding: '6px 14px', fontSize: '13px', borderRadius: '6px', cursor: smtpBusy ? 'default' : 'pointer' },
+              },
+              t('barkTest'),
+            ),
+          ),
+          smtpNote !== ''
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-success-primary, #389e0d)' } },
+                smtpNote,
+              )
+            : null,
+          smtpError !== ''
+            ? React.createElement(
+                'span',
+                { style: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d4380d)' } },
+                smtpError,
+              )
+            : null,
         )
       }
 
@@ -770,75 +1637,17 @@ window.__ModuleLoader__.load({
           React.createElement('p', { key: 'missing', style: { fontSize: '13px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)' } }, t('missing')),
         )
       } else {
-        children.push(
-          React.createElement('p', { key: 'intro', style: { fontSize: '13px', color: 'var(--dsw-alias-label-tertiary, #8c8c8c)', margin: 0 } }, t('intro')),
-        )
-        children.push(
-          React.createElement(
-            'div',
-            { key: 'fields', style: { display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' } },
-            FIELDS.map(renderField),
-          ),
-        )
-        children.push(renderMemberBlock())
-        if (member.authorized) {
-          children.push(
-            React.createElement(
-              'div',
-              { key: 'theme-fields', style: { display: 'flex', flexDirection: 'column', gap: '14px' } },
-              THEME_FIELDS.map(renderField),
-            ),
-          )
-        }
-        children.push(
-          React.createElement(
-            'div',
-            { key: 'actions', style: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' } },
-            React.createElement(
-              'button',
-              {
-                type: 'button',
-                disabled: busy || !dirty,
-                onClick: save,
-                style: {
-                  padding: '6px 16px',
-                  fontSize: '13px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
-                  cursor: busy ? 'default' : 'pointer',
-                  background: 'var(--dsw-alias-bg-primary, #fff)',
-                  color: 'var(--dsw-alias-label-primary, #1f1f1f)',
-                },
-              },
-              busy ? t('saving') : t('save'),
-            ),
-            state.phase === 'saved'
-              ? React.createElement('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-state-success-primary, #389e0d)' } }, t('saved'))
-              : null,
-            state.phase === 'error'
-              ? React.createElement('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d4380d)' } }, `${t('failed')} ${state.message}`)
-              : null,
-            React.createElement(
-              'button',
-              {
-                type: 'button',
-                onClick: load,
-                style: {
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: 'var(--dsw-alias-label-secondary, #595959)',
-                },
-              },
-              '↻',
-            ),
-          ),
-        )
+        children.push(renderChannelTabs())
 
-        // ── 页脚：版权 + QQ 交流群（用户要求放在保存按钮下方）──────────
+        if (tab === 'smtp') {
+          children.push(renderSmtpPanelUnified())
+        } else if (tab === 'bark') {
+          children.push(renderBarkPanelUnified())
+        } else {
+          children.push(renderMeowPanel())
+        }
+
+        // ── 页脚：版权 + QQ用户沟通群（用户要求放在保存按钮下方）──────────
         const divider = { borderTop: '1px solid var(--dsw-alias-border-l2, #d9d9d9)', margin: '10px 0 0' }
         children.push(React.createElement('hr', { key: 'footer-divider', style: divider }))
         children.push(
@@ -858,6 +1667,23 @@ window.__ModuleLoader__.load({
             React.createElement('span', null, t('copyright')),
             React.createElement('span', { style: { color: 'var(--dsw-alias-border-l2, #d9d9d9)' } }, '·'),
             React.createElement('span', null, t('qqGroup')),
+            React.createElement(
+              'button',
+              {
+                type: 'button',
+                onClick: openSponsor,
+                style: {
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--dsw-alias-border-l2, #d9d9d9)',
+                  background: 'transparent',
+                  color: 'var(--dsw-alias-state-info-primary, #1677ff)',
+                  cursor: 'pointer',
+                },
+              },
+              t('sponsor'),
+            ),
           ),
         )
       }

@@ -14,13 +14,10 @@
  */
 
 import { registerAutoPush, type AutoPushContext } from './auto-push.js'
-import { getEffectiveTheme, registerMemberRoutes } from './member-auth.js'
+import { getEffectiveTheme } from './member-auth.js'
 import {
-  ConfigError,
-  DEFAULT_API_BASE,
   FIXED_REQUEST,
   FIXED_THROTTLE_MS,
-  MEOW_NICKNAME_REQUIRED_MESSAGE,
   resolveConfig,
   type ResolvedMeoWConfig,
   type WarnSink,
@@ -29,6 +26,15 @@ import { DEFAULT_TITLE, formatOutcome, pushToMeow, type PushOutcome } from './me
 import { assertInvariants, createInvariants, registerInvariants } from './invariant.js'
 import { registerPromptSection } from './prompt.js'
 import { SchemaBuilder } from './schema.js'
+import {
+  getBarkConfig,
+  getSmtpConfig,
+  isSmtpConfigured,
+  meowStatusFromNickname,
+  registerPushRoutes,
+} from './push-settings.js'
+import { isBarkConfigured, sendBark } from './bark.js'
+import { sendSmtpMail } from './smtp.js'
 import { defineTool, text, type ToolDefinition } from './tool.js'
 
 /**
@@ -251,7 +257,7 @@ export function checkThrottle(
  * @param injected Loader 直接传入的 config（部分 Cordis 版本走此通道）
  */
 export function apply(ctx: PluginContext, injected?: unknown): void {
-  // ── 1. 校验配置：nickname 必填 ───────────────────────────────────
+  // ── 1. 校验配置：昵称可空（仅 SMTP 也可运行）──────────────────────
   // 兼容两种传参形态：Cordis 约定 apply(ctx, config)，同时 config 会镜像到 ctx.config。
   // 显式传入的 config 优先；它是空对象时回退 ctx.config（避免空 patch 覆盖已挂载配置）。
   const rawConfig =
@@ -261,39 +267,35 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
     const warn: WarnSink = (message) => log(ctx, 'warn', message)
     config = resolveConfig(rawConfig, warn)
   } catch (error) {
-    if (error instanceof ConfigError) {
-      // 刻意「不抛出」而是 return：
-      //   抛出会让 Loader 显示插件加载失败（栈信息吓人且可能中断 profile 其余补丁）；
-      //   return 让插件处于已加载但未注册任何工具的状态，错误提示清晰可读。
-      log(ctx, 'error', `❌ 插件未启用：${MEOW_NICKNAME_REQUIRED_MESSAGE}`)
-      log(
-        ctx,
-        'error',
-        `   配置位置：profile 的 cordis.patch.yml → insert → id: ${name} → config.nickname；修改后保存即可热重载。`,
-      )
-      log(ctx, 'error', `   默认 API 地址：${DEFAULT_API_BASE}/{nickname}/{title}/{message}`)
-      return
-    }
-    // 非预期错误（探针本身出错）：同样拒绝注册，避免带病运行
+    // 非预期错误：拒绝注册，避免带病运行
     log(ctx, 'error', `❌ 插件未启用：配置解析失败：${String(error)}`)
     return
   }
 
-  // ── 2. 校验 tools 服务可用 ───────────────────────────────────────
+  // ── 2. 推送设置路由（红绿灯状态 + SMTP 配置）────────────────────
+  try {
+    registerPushRoutes(
+      ctx,
+      (level, message) => log(ctx, level, message),
+      () => meowStatusFromNickname(config.nickname),
+      () => config.nickname,
+    )
+  } catch (error) {
+    log(ctx, 'warn', `推送设置模块初始化失败（不影响 MeoW 推送）：${String(error)}`)
+  }
+
+  if (config.nickname === '') {
+    log(ctx, 'warn', 'MeoW 昵称未配置：MeoW 通道关闭；若已配置 SMTP，仍会正常发送邮件。')
+  }
+
+  // ── 3. 校验 tools 服务可用 ───────────────────────────────────────
   const tools = ctx.tools
   if (tools === undefined || typeof tools.register !== 'function') {
     log(ctx, 'error', `❌ 插件未启用：tools 服务不可用（请检查 inject: ['tools'] 是否生效）。`)
     return
   }
 
-  // ── 3. 会员授权 / 主题同步路由（即使还没填昵称也要可用）──────────
-  try {
-    registerMemberRoutes(ctx, (level, message) => log(ctx, level, message))
-  } catch (error) {
-    log(ctx, 'warn', `会员模块初始化失败（不影响推送）：${String(error)}`)
-  }
-
-  // ── 4. 统一的发送函数（工具与自动推送共用）────────────────────────
+  // ── 3. 统一的发送函数（工具与自动推送共用）────────────────────────
   // 请求细节全部固化：GET + text + HTTPS + 10s 超时（见 config.ts 的 FIXED_REQUEST）。
   // 用户只需要配置昵称。
   const sendPush = async (
@@ -309,38 +311,122 @@ export function apply(ctx: PluginContext, injected?: unknown): void {
     const effectiveTitle = title.trim() !== '' ? title.trim() : theme.title !== '' ? theme.title : DEFAULT_TITLE
     const effectiveImg = imgUrl !== undefined && imgUrl !== '' ? imgUrl : theme.imgUrl !== '' ? theme.imgUrl : undefined
 
-    // 文档限流保护：与上次成功发送保持至少 MIN_SEND_INTERVAL_MS 间隔
-    const wait = remainingGlobalWindow(lastSendAt, MIN_SEND_INTERVAL_MS)
-    if (wait > 0) await sleep(wait)
+    // 三种通道各自独立：MeoW 看昵称，SMTP 看服务器/收件人，Bark 看 token。
+    // 配好一个就跑一个；配好多个就同时发送。
+    const smtp = await getSmtpConfig(ctx)
+    const bark = await getBarkConfig(ctx)
+    const meowReady = config.nickname.trim() !== ''
+    const smtpReady = isSmtpConfigured(smtp)
+    const barkReady = isBarkConfigured(bark)
+    if (!meowReady && !smtpReady && !barkReady) {
+      return {
+        ok: false,
+        kind: 'invalid',
+        message: '还没有可用的推送方式：请至少配置 MeoW 昵称、SMTP 邮件或 Bark token 中的一种。',
+      }
+    }
 
-    const outcome = await pushToMeow(
-      {
-        nickname: config.nickname,
+    const results: Array<{ name: string; outcome: PushOutcome }> = []
+
+    if (meowReady) {
+      // 文档限流保护：与上次成功发送保持至少 MIN_SEND_INTERVAL_MS 间隔
+      const wait = remainingGlobalWindow(lastSendAt, MIN_SEND_INTERVAL_MS)
+      if (wait > 0) await sleep(wait)
+      const outcome = await pushToMeow(
+        {
+          nickname: config.nickname,
+          title: effectiveTitle,
+          message,
+          ...(url === undefined || url === '' ? {} : { url }),
+          ...(effectiveImg === undefined ? {} : { imgUrl: effectiveImg }),
+          category: theme.category,
+          msgType: FIXED_REQUEST.msgType,
+          htmlHeight: FIXED_REQUEST.htmlHeight,
+        },
+        {
+          apiBase: FIXED_REQUEST.apiBase,
+          method: FIXED_REQUEST.method,
+          timeout: FIXED_REQUEST.timeout,
+          ...(signal === undefined ? {} : { signal }),
+        },
+      )
+      if (outcome.ok) lastSendAt = Date.now()
+      results.push({ name: 'MeoW', outcome })
+    }
+
+    if (smtpReady) {
+      const body = url === undefined || url === '' ? message : `${message}\n\n链接：${url}`
+      const result = await sendSmtpMail(smtp, { subject: effectiveTitle, text: body })
+      results.push({
+        name: 'SMTP',
+        outcome: result.ok
+          ? {
+              ok: true,
+              status: 200,
+              url: `smtp://${smtp.host}:${smtp.port}`,
+              message: `邮件已发送至 ${smtp.toEmail}`,
+            }
+          : {
+              ok: false,
+              kind: 'network',
+              message: `SMTP 推送失败：${result.error ?? '未知错误'}`,
+              url: `smtp://${smtp.host}:${smtp.port}`,
+            },
+      })
+    }
+
+    if (barkReady) {
+      const result = await sendBark(bark, {
         title: effectiveTitle,
-        message,
+        text: message,
         ...(url === undefined || url === '' ? {} : { url }),
-        ...(effectiveImg === undefined ? {} : { imgUrl: effectiveImg }),
-        category: theme.category,
-        msgType: FIXED_REQUEST.msgType,
-        htmlHeight: FIXED_REQUEST.htmlHeight,
-      },
-      {
-        apiBase: FIXED_REQUEST.apiBase,
-        method: FIXED_REQUEST.method,
-        timeout: FIXED_REQUEST.timeout,
-        ...(signal === undefined ? {} : { signal }),
-      },
-    )
+        ...(effectiveImg === undefined ? {} : { icon: effectiveImg }),
+      })
+      results.push({
+        name: 'Bark',
+        outcome: result.ok
+          ? { ok: true, status: 200, url: 'bark://ggsuper', message: 'Bark 已推送' }
+          : { ok: false, kind: 'network', message: result.error ?? 'Bark 发送失败' },
+      })
+    }
 
-    if (outcome.ok) lastSendAt = Date.now()
-    return outcome
+    // 只启用一种通道时，直接返回它的结果
+    if (results.length === 1) {
+      const only = results[0]
+      if (only !== undefined) return only.outcome
+    }
+
+    // 多种通道：聚合结果；任意一种成功就算整体成功，并说明其他通道的状态
+    const parts: string[] = []
+    const failures: string[] = []
+    for (const { name, outcome } of results) {
+      if (outcome.ok) parts.push(name === 'SMTP' ? outcome.message : `${name} 已推送`)
+      else failures.push(`${name}：${outcome.message}`)
+    }
+
+    const successCount = results.filter(({ outcome }) => outcome.ok).length
+    if (successCount === 0) {
+      return {
+        ok: false,
+        kind: 'network',
+        message: failures.join('；'),
+      }
+    }
+
+    const baseMessage = parts.join('；')
+    return {
+      ok: true,
+      status: 200,
+      url: 'multi-channel',
+      message: failures.length === 0 ? baseMessage : `部分成功：${baseMessage}；失败：${failures.join('；')}`,
+    }
   }
 
   // ── 5. 注册工具 ─────────────────────────────────────────────────
   const meowTool = defineTool<MeowToolArgs, string>({
     name: TOOL_NAME,
     description:
-      `通过 MeoW API 向已配置的鸿蒙手机推送一条通知。message 必填；title 缺省为 "${DEFAULT_TITLE}"。`
+      `通过已配置的推送通道（MeoW 手机通知 / SMTP 邮件 / Bark）发送一条纯文本消息。message 必填；title 缺省为 "${DEFAULT_TITLE}"。`
       + '支持纯文本与 HTML（由插件配置 msgType 决定）。',
     parameters: {
       type: 'object',

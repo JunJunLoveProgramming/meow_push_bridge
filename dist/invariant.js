@@ -138,15 +138,10 @@ export function createInvariants(input) {
         },
         {
             id: 'meow-push-bridge/runtime-config',
-            description: '运行时配置必须已被归一化：昵称非空，且固化的请求参数合法',
+            description: '运行时配置必须已被归一化：固化的请求参数合法',
             check: () => {
                 const violations = [];
-                if (input.config.nickname.trim() === '') {
-                    violations.push({
-                        id: 'meow-push-bridge/runtime-config',
-                        message: '运行时配置 nickname 为空。',
-                    });
-                }
+                // 昵称允许为空：此时仅启用 SMTP 通道
                 // 请求参数已固化（见 config.ts 的 FIXED_REQUEST），这里校验常量本身没被改坏
                 if (!/^https?:\/\/[^/\s]+/i.test(FIXED_REQUEST.apiBase)) {
                     violations.push({

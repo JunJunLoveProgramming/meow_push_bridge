@@ -179,7 +179,7 @@ test('提供会话时：推送「你问 + 回复 + 统计」总结，而不是�
   assert.equal(pushes.length, 1)
   const body = pushes[0]?.message ?? ''
   assert.match(body, /【你问】帮我把按钮修好/)
-  assert.match(body, /【回复】已修好，是事件绑定漏了/)
+  assert.match(body, /【摘要】已修好，是事件绑定漏了/)
   assert.match(body, /调用 1 次工具/)
   const lines = body.split('\n')
   assert.match(lines[lines.length - 1] ?? '', /^（/, '统计信息应排在最后一行')
@@ -251,7 +251,7 @@ test('总结里没有工具事件时，用事件流统计兜底工具次数', as
   await flush()
 
   const body = pushes[0]?.message ?? ''
-  assert.match(body, /【回复】全绿/)
+  assert.match(body, /【摘要】全绿/)
   assert.match(body, /调用 2 次工具/, '工具数应用事件流统计兜底')
 })
 

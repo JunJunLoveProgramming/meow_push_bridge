@@ -182,7 +182,7 @@ test('renderTail：有工具与无工具两种形态', () => {
   assert.match(renderTail(9, new Map([['a', 1], ['b', 1], ['c', 1], ['d', 1]]), 5), /等 4 种/)
 })
 
-test('formatSummary：输出「你问 / 回复 / 统计」三段，统计在最后', () => {
+test('formatSummary：输出「你问 / 摘要 / 统计」三段，统计在最后', () => {
   const session = fakeSession([
     userEvent(1, '登录按钮点不动'),
     toolCallEvent(1, 'read'),
@@ -191,16 +191,16 @@ test('formatSummary：输出「你问 / 回复 / 统计」三段，统计在最�
   const text = formatSummary(summarizeTurn(session, 1), 9)
   const lines = text.split('\n')
   assert.equal(lines[0], '【你问】登录按钮点不动')
-  assert.equal(lines[1], '【回复】是事件绑定漏了，已修好')
+  assert.equal(lines[1], '【摘要】是事件绑定漏了，已修好')
   assert.match(lines[2] ?? '', /^（调用 1 次工具：read，耗时 9s）$/)
   assert.ok(text.includes('不该出现') === false, '推理块内容不得进入推送')
 })
 
-test('formatSummary：缺少提问时只渲染回复', () => {
+test('formatSummary：缺少提问时只渲染摘要', () => {
   const session = fakeSession([assistantEvent(1, ['只有回复，没有提问'])])
   const text = formatSummary(summarizeTurn(session, 1), 3)
   assert.ok(!text.includes('【你问】'))
-  assert.ok(text.includes('【回复】只有回复，没有提问'))
+  assert.ok(text.includes('【摘要】只有回复，没有提问'))
 })
 
 test('formatSummary：完全拿不到对话内容时降级为统计文案', () => {

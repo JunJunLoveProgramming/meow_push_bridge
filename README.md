@@ -1,6 +1,8 @@
+![MeoW Push Bridge](https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png)
+
 # meow-push-bridge · 喵桥
 
-> 让 DSH Agent 在完成任务后，通过 [MeoW](https://api.chuckfang.com) API 向你的鸿蒙手机推送通知。
+> 让 DSH Agent 在完成任务后，所有操作系统都能推送一条浓缩的中文摘要通知。
 
 [![npm](https://img.shields.io/npm/v/meow-push-bridge)](https://www.npmjs.com/package/meow-push-bridge)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -27,11 +29,13 @@
 - [特性](#特性)
 - [环境要求](#环境要求)
 - [安装](#安装)
+- [赞助](#赞助)
 - [配置](#配置)
-- [会员主题与云端同步](#会员主题与云端同步)
+- [主题设置（本地）](#主题设置本地)
 - [使用](#使用)
 - [工作方式](#工作方式)
 - [MeoW API 行为](#meow-api-行为)
+- [Bark API 行为](#bark-api-行为)
 - [错误排查](#错误排查)
 - [开发与测试](#开发与测试)
 - [设计说明](#设计说明)
@@ -44,13 +48,13 @@
 
 ## 特性
 
-- **配置极简**：DSH 设置 →「内置插件」→「喵桥」，**必填只有 MeoW 昵称**
-- **会员主题（0.3.0）**：登录会员后解锁「通知标题」与「自定义图标 URL」，按 MeoW API 规范随推送生效
-- **自定义分类（0.4.0）**：会员可改 `category`（默认 `dsh插件`，最多 10 字）；非会员固定 `dsh插件`
-- **主题不写 profile（0.4.0）**：主题存在宿主安全存储/云端，非会员手改配置也无法启用会员主题
-- **云端同步（0.3.0）**：昵称 + 标题 + 图标三个输入项可一键上传到会员站点数据库，换机后从云端导入
-- **授权可撤销**：浏览器完成会员授权后自动回到插件；点「取消授权」立即吊销令牌并恢复默认主题
+- **配置极简**：DSH 设置 →「内置插件」→「喵桥」，MeoW 昵称、SMTP、Bark 至少配置一种即可
+- **本地主题（0.5.0）**：通知标题、自定义图标 URL、自定义分类，全部本机生效，无需登录
+- **主题不写 profile**：主题存在宿主安全存储，配置里只有昵称；取消会员/断网都不影响
 - **自动推送保证触发**：每轮回答结束都由宿主推送，不受模型是否遵守提示词影响
+- **内置总结器（0.5.0）**：推送前清理英文运行时上下文、Markdown/HTML/代码块，压缩成中文纯文本摘要
+- **SMTP 邮件通道（0.5.0）**：MeoW、SMTP 与 Bark 按配置自动启用，配好一个就跑一个，配好多个就同时发送
+- **Bark 推送（0.5.0）**：填入 Bark token 即可使用全能消息推送 JSON API
 - **加载期强校验**：`nickname` 未配置时拒绝注册工具并给出明确指引，避免误推到他人账号
 - **符合官方 API 规范**：按 [MeoW Push API 文档](https://www.chuckfang.com/MeoW/api_doc.html) 解析业务状态码（200/400/403/404/429/500），提示精确可操作
 - **完整 URL 编码**：路径段先做全角替换再编码，中文、空格、`/`、`?`、`#`、`&` 都不会破坏请求
@@ -136,11 +140,18 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 
 ---
 
+## 赞助
+
+Meow-Push-Bridge 完全免费开源。如果它在你的 DSH + 鸿蒙工作流里省了时间，欢迎通过赞助方案进行赞助。赞助用于覆盖域名和持续维护成本，不解锁额外功能。
+
+[赞助方案](https://www.junjunloveprogramming.cn/1794977129986)
+
+---
+
 ## 配置
 
-**必填只有 MeoW 昵称**；`title` / `imgUrl` / `category` 属于**会员主题**，登录会员后才会在设置页显示。
-主题**不会写入 profile 配置**，而是保存在宿主安全存储与会员站点云端 —— 非会员即使手改 `cordis.patch.yml`
-也无法启用会员主题，未登录时一律使用固定默认（分类固定 `dsh插件`）。
+**MeoW 昵称、SMTP、Bark 至少配置一种**；`title` / `imgUrl` / `category` 属于**本地主题**，设置页始终显示。
+主题**不会写入 profile 配置**，而是保存在宿主安全存储；不依赖会员或云端。
 
 ### 在 DSH 设置页配置（推荐）
 
@@ -148,10 +159,10 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 
 | 字段 | 控件 | 说明 | 默认值 |
 |---|---|---|---|
-| `nickname` | 文本框 | **必填**：你的 MeoW 用户昵称（官方文档：不允许包含斜杠） | — |
-| `title` | 文本框（仅会员） | 通知标题 | `MeoW Push Bridge` |
-| `imgUrl` | 文本框（仅会员） | 通知图标 URL（官方建议 216×216 PNG） | 不附加图标 |
-| `category` | 文本框（仅会员） | 自定义分类，最多 10 个字 | `dsh插件` |
+| `nickname` | 文本框 | 启用 MeoW 时必填：你的 MeoW 用户昵称（官方文档：不允许包含斜杠） | — |
+| `title` | 文本框 | 通知标题 | `MeoW Push Bridge` |
+| `imgUrl` | 文本框 | 通知图标 URL（官方建议 216×216 PNG） | 默认图标 |
+| `category` | 文本框 | 自定义分类，最多 10 个字 | `dsh插件` |
 
 保存后，昵称会由 DSH 的 `settings` 服务写入 profile：
 
@@ -171,7 +182,7 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 ```yaml
 - id: meow-push-bridge
   config:
-    nickname: "你的MeoW昵称"     # 必填
+    nickname: "你的MeoW昵称"     # 启用 MeoW 时必填
 ```
 
 ### 字段说明
@@ -208,57 +219,23 @@ dsh --profile <name> --patch ./cordis.debug.patch.yml
 
 ---
 
-## 会员主题与云端同步
+## 主题设置（本地）
 
-> 0.3.0 新增。主题设置是**会员功能**：未登录时设置页只显示昵称与「登录会员」按钮，
-> 登录成功后才显示「MeoW 通知标题」「自定义图标 URL」以及同步按钮。
+> 云端同步与会员授权已取消。主题完全在本机生效，无需登录。
 
-### 界面状态
+设置页始终显示：
 
-| 状态 | 设置页显示 |
+| 字段 | 说明 |
 |---|---|
-| 未登录 | 昵称输入框 + 「登录会员」按钮 + 说明 |
-| 等待浏览器授权 | 按钮变为「等待浏览器授权…」，每 1.5 秒轮询一次 |
-| 已登录 | `已登录 <用户名>` + 主题两个输入框 + 「同步到云端」「从云端导入」「取消授权」 |
-| 已取消授权 | 回到未登录状态；主题恢复默认（标题/图标清空） |
+| MeoW 通知标题 | 留空使用默认 `MeoW Push Bridge` |
+| 自定义图标 URL | 留空使用默认图标 |
+| 自定义分类 | 默认 `dsh插件`，最多 10 字 |
 
-### 登录流程（loopback + PKCE）
-
-```
-DSH 设置页点击「登录会员」
-  → 宿主 POST /meow-push-bridge-api/auth/start（生成 state + PKCE）
-  → 宿主通过 subprocess 调 ShellExecute 打开系统默认浏览器 https://meowpushbridge.junjunloveprogramming.cn/plugin/authorize.php?...
-  → 会员登录并点击「授权」
-  → 站点 302 回 http://127.0.0.1:<port>/meow-push-bridge-api/auth/callback?code&state
-  → 宿主用 code + verifier 调 /plugin/token.php 换令牌
-  → 令牌存入宿主 credentials，设置页轮询到已授权
-```
-
-- 回调只接受 **loopback**（`127.0.0.1` / `localhost` / `[::1]`），防止授权码被钓鱼站点截走；
-- 授权码 5 分钟有效、一次性使用，兑换时校验 PKCE（S256）；
-- 令牌只在宿主侧使用，**不会返回给浏览器**；
-- 「取消授权」会调用 `/api/v1/revoke.php` 吊销远端令牌，并清除本地凭据。
-
-### 同步规则
-
-- **同步到云端**：把当前 `nickname` / `title` / `imgUrl` 三个输入项写入会员站点数据库（`user_data` 的 `meow.theme` 键）；
-- **从云端导入**：读取该键，更新设置页并保存到本地配置；
-- 每个账号只保留一个有效的插件令牌，重复登录会自动作废旧令牌；
-- 云端只保存这三个字段 + 更新时间，不保存令牌。
-
-### 前置条件
-
-会员站点需部署 0.3.0 版（含 `plugin_authorizations` 表，迁移 `2026_10_21_000006`），
-并确保 DSH 是**本机访问**（`http://127.0.0.1:<port>`）；若通过局域网 IP 打开 DSH，回调地址校验会拒绝。
-
-### 排查
-
-| 现象 | 处理 |
-|---|---|
-| 点登录没有反应 | 宿主通过 subprocess 调 ShellExecute（rundll32）/open/xdg-open 打开系统浏览器；若仍未打开，用界面上的「手动打开授权页」链接，或确认默认浏览器可用 |
-| 授权页提示「回调地址不合法」 | DSH 不是通过 127.0.0.1/localhost 打开的 |
-| 授权成功但设置页仍显示未登录 | 等待 1.5 秒轮询；确认 `/auth/status` 可访问 |
-| 同步失败 401 | 令牌已过期/被吊销，重新登录会员 |
+- 主题保存在宿主 `credentials` 安全存储，**不写入 profile**；
+- 默认图标：`https://www.junjunloveprogramming.cn/upload/meow_push_bridge_logo.png`；
+- 工具推送与自动推送都使用当前主题；
+- 取消会员、站点不可用、断网都不影响本机主题；
+- 不再有「登录会员 / 同步到云端 / 从云端导入」入口。
 
 ---
 
@@ -279,30 +256,65 @@ DSH 设置页点击「登录会员」
 
 **固定为「每轮都推」**：宿主监听轮次结束事件后直接推送，**不依赖模型**。
 
-正文是**本轮对话总结** —— 你的提问 + 模型的最终回复 + 统计尾巴：
+正文是**本轮对话浓缩总结** —— 你的提问 + 模型回复的摘要 + 统计尾巴：
 
 ```text
 【你问】帮我把验证按钮改成 POST
-【回复】已把验证请求改成 POST，正文走 JSON Body；路径段只保留昵称与标题，因此不再有斜杠编码问题。
+【摘要】已把验证请求改成 POST，正文走 JSON Body；路径段只保留昵称与标题，不再有斜杠编码问题。
 （调用 2 次工具：read、edit，耗时 12s）
 ```
+
+推送前会经过内置的**本地总结器**（`src/condense.ts`，不调用 LLM）：
+
+- 去掉 DSH 追加在提问末尾的英文运行时上下文（`Time sampled…`、`Current runtime context…` 等）；
+- 去掉 Markdown、HTML、代码块、链接、命令与路径；
+- 按句子取结论，提问最多 100 字、摘要最多 260 字；
+- 输出保证是**中文纯文本**，`msgType` 固定 `text`，不会出现 HTML 标签。
 
 内容来源：宿主通过 `ctx.sessions.get(agentId)` 取到 `Session` 对象，
 再从 `session.snapshotEvents()` 读取本轮事件：
 
 | 事件 | 用途 |
 |---|---|
-| `user/message` | 你的提问 |
+| `user/message` | 你的提问（清理运行时上下文后浓缩） |
 | `assistant/message` | 模型的最终回复（只取 `text` 块，**推理块不会推送**） |
 | `tool/call` | 工具调用次数与名字 |
 
-> 为什么不用 LLM 生成总结：宿主层没有可调用的模型。直接取「提问 + 最终回复」
+> 为什么不用 LLM 生成总结：宿主层没有可调用的模型。本地抽取式总结
 > 既准确又不额外消耗 token，也不需要第二次请求。
 
-**截断策略**：提问超过 160 字、回复超过 600 字会被截断并加省略号（手机锁屏不宜过长）。
+**截断策略**：提问超过 160 字、回复超过 600 字会先截断；渲染推送前再由总结器压缩到 100 / 260 字。
 
 **降级行为**：拿不到会话（例如宿主未提供 `sessions` 服务）时，正文退化为纯统计
 `本轮已完成：调用 3 次工具（pwsh、read），耗时 12s` —— **推送始终会发出**。
+
+### 推送通道（MeoW / SMTP / Bark）
+
+三种通道**按配置自动启用**，不需要二选一：
+
+| 通道 | 启用条件 | 说明 |
+|---|---|---|
+| MeoW 推送 | 昵称非空 | 手机通知，支持本地主题与自定义分类 |
+| 邮件推送（SMTP） | 服务器、发件人、收件人已填 | 把同一份中文摘要作为纯文本邮件发送 |
+| Bark 推送 | token 已填 | 通过全能消息推送 Bark JSON API 发送 |
+
+- 只配好一种：只走这一种；
+- 配好多种：**同时发送**，任意一种成功即视为整体成功，失败通道会在结果里注明；
+- 设置页每个通道旁有**红绿灯**：绿色=已配置，红色=未配置；
+- 三种都未配置时，工具会提示先配置至少一种。
+
+SMTP 配置项：服务器、端口、加密方式（SSL/TLS 465、STARTTLS 587、不加密 25）、
+用户名、密码、发件人邮箱/名称、收件人邮箱；提供「发送测试邮件」按钮。
+
+Bark 配置项：token、通知标题、通知图标 URL、发送者名称。
+`msgType` 固定为 `1`（个人信息），`issecure` 固定为 `0`，不需要手填；
+默认使用个人推送端点 `sendMsg3_New.php`。提供「发送测试消息」按钮。
+Bark 的通知标题与图标 URL 留空时，自动使用 MeoW 主题的标题与默认图标。
+
+- SMTP 密码与 Bark token 存在宿主 `credentials` 安全存储，**不写入 profile**；SMTP 只返回 `hasPassword`，Bark token 按用户要求明文显示；
+- 邮件正文固定 UTF-8 纯文本（base64 传输），主题按 RFC 2047 编码；
+- Bark 发送 JSON，成功码 `80000000`，错误码会转成中文提示；
+- 后续增加通道只需在发送分发处追加实现。
 
 ### 手动推送
 
@@ -378,7 +390,7 @@ curl.exe -sS "https://api.chuckfang.com/你的昵称/测试/hi"
 
 | 缺失的能力 | 正文形态 |
 |---|---|
-| 全部可用 | `【你问】…【回复】…（调用 2 次工具…）` |
+| 全部可用 | `【你问】…【摘要】…（调用 2 次工具…）` |
 | 缺 `ctx.sessions` | `本轮已完成：调用 2 次工具（read、edit），耗时 12s` |
 | 连 `session/event` 也拿不到 | `本轮已完成（纯问答，未使用工具，耗时 2s）` |
 
@@ -394,7 +406,7 @@ curl.exe -sS "https://api.chuckfang.com/你的昵称/测试/hi"
 **GET**（默认，内容放在路径）
 
 ```
-https://api.chuckfang.com/{昵称}/{title}/{msg}?url={url}&imgUrl={imgUrl}&msgType={msgType}&htmlHeight={htmlHeight}
+https://api.chuckfang.com/{昵称}/{title}/{msg}?url={url}&imgUrl={imgUrl}&msgType={msgType}&htmlHeight={htmlHeight}&category={category}
 # title 可省略
 https://api.chuckfang.com/{昵称}/{msg}?...
 ```
@@ -404,7 +416,7 @@ https://api.chuckfang.com/{昵称}/{msg}?...
 ```
 POST /{昵称}/[title]
 Content-Type: application/json
-{ "title": "标题", "msg": "内容", "url": "https://…", "imgUrl": "https://…" }
+{ "title": "标题", "msg": "内容", "url": "https://…", "imgUrl": "https://…", "category": "dsh插件" }
 ```
 
 ### 参数
@@ -416,10 +428,17 @@ Content-Type: application/json
 | `msg` | 路径 / Body | ✅ | 消息内容 | 工具参数 `message` |
 | `url` | 查询 / Body | — | 跳转链接（需 URL 编码） | 工具参数 `url` |
 | `imgUrl` | 查询 / Body | — | 通知图标 URL，建议 **216×216 PNG**；Body 优先 | 工具参数 `imgUrl`（可选） |
+| `category` | 查询 / Body | — | 自定义分类名，去首尾空白后最多 **10 个字**；空表示不分类 | 本地主题 `category`，默认 `dsh插件` |
 | `msgType` | 请求参数 | — | `text`（默认，纯文本）或 `html`（App 内渲染） | 固定 `text` |
 | `htmlHeight` | 请求参数 | — | 仅 `msgType=html` 生效，像素，默认 `200` | 固定 `200`（当前不发送） |
 
 `msgType` 与 `htmlHeight` 是**请求参数**（查询串），不属于 JSON 参数。
+
+分类补充规则（官方文档）：
+
+- JSON Body 中的 `category` 优先于查询参数；空字符串/纯空白会清除分类；
+- 去除首尾空白后最多 10 个字，超出返回业务 `status: 400`，不会自动截断；
+- 分类名不能包含换行或控制字符；支持新版 App 的「自定义分类」分组。
 
 ### 响应
 
@@ -514,6 +533,83 @@ Content-Type: application/json
 
 ---
 
+## Bark API 行为
+
+> 官方文档：[全能消息推送 Bark API](https://www.ggsuper.com.cn/push/api.html)
+> 接口使用 HTTPS，支持离线推送；本插件只使用 **JSON POST 个人推送**。
+
+### 端点
+
+| 用途 | 方法 | 端点 |
+|---|---|---|
+| 个人推送（JSON，插件使用） | POST | `https://www.ggsuper.com.cn/push/api/v1/sendMsg3_New.php` |
+| 个人推送（表单） | POST | `https://www.ggsuper.com.cn/push/api/v1/sendMsg_New.php` |
+| 个人推送（GET） | GET | `https://www.ggsuper.com.cn/push/api/v1/sendMsg2_New.php` |
+| 频道推送（JSON，文档提供，插件暂未使用） | POST | `https://www.ggsuper.com.cn/push/api/v1/sendChannelMsg2_New.php` |
+
+### 个人推送参数
+
+| 参数 | 必填 | 说明 |
+|---|---|---|
+| `title` | 是 | 推送标题 |
+| `msg` | 是 | 推送内容 |
+| `token` | 是 | 接收端客户端注册的 token |
+| `issecure` | 是 | 固定值 `0` |
+| `url` | 否 | 点击通知跳转链接 |
+| `msgType` | 否 | `0` 频道消息 / `1` 个人信息 / `2` 其他信息，默认 `1` |
+| `icon` | 否 | 通知图标，必须是 **https** 图片地址；鸿蒙离线图标需 ≤192KB |
+| `sender` | 否 | 发送者名称，默认匿名消息 |
+
+频道推送只使用 `title`、`msg`、`url`、`token`、`channel_id`（`token` 为频道创建人的 token）。
+
+### 请求示例
+
+```http
+POST /push/api/v1/sendMsg3_New.php HTTP/1.1
+Host: www.ggsuper.com.cn
+Content-Type: application/json
+
+{
+  "title": "任务完成",
+  "msg": "已生成构建产物",
+  "token": "接收端Token",
+  "issecure": 0,
+  "msgType": 1,
+  "sender": "喵桥"
+}
+```
+
+### 成功响应
+
+```json
+{
+  "code": "80000000",
+  "msg": "Success"
+}
+```
+
+### 错误码
+
+| `code` | 含义 |
+|---|---|
+| `0` | 发送失败：网络原因或无效数据 |
+| `200` | token 错误或失效 |
+| `300` | 请求过于频繁（普通用户 1 小时最多 3 条） |
+| `400` | 接收对象当天次数已用完 |
+| `500` | 已被对方拉黑，消息无法发出 |
+| `1000` | 风控检测异常，账号可能已被限制 |
+| `100` | 频道推送：每个频道每 3 秒只能发送一次 |
+
+### 插件实际用法
+
+- 只调用 `sendMsg3_New.php`，固定 `issecure: 0`、`msgType: 1`；
+- `title` 留空时使用 MeoW 主题标题；`icon` 留空时使用 MeoW 主题图标；
+- token 由用户在设置页填写，按用户要求**明文显示**，保存在宿主 `credentials`；
+- 请求超时 15 秒；Bark 业务错误码会转成中文提示；
+- 频道推送端点与 `channel_id` 在文档中存在，但本插件当前不启用。
+
+---
+
 ## 错误排查
 
 ### 启动阶段
@@ -543,7 +639,7 @@ Content-Type: application/json
 | `推送已节流` | 同一会话 5 秒内重复调用**工具** | 等待提示的毫秒数。自动推送不受此限制 |
 | 通知图标没变 | 传入的 `imgUrl` 不是可公开访问的图片 | 使用公网可访问的 URL，建议 216×216 PNG |
 | 自动推送正文只有「本轮已完成…」 | 拿不到 `ctx.sessions`，或会话里没有对话事件 | 属预期降级：推送照常发出，只是没有对话正文 |
-| 自动推送的回复内容被截断 | 超过 600 字（提问 160 字）触发截断 | 属预期设计：手机锁屏不宜过长 |
+| 自动推送的回复内容被截断 | 原始回复超过 600 字，或摘要超过 260 字 | 属预期设计：手机锁屏不宜过长 |
 | 推送成功但手机没收到 | MeoW App 未登录 / 通知权限被关 / 免打扰 | 先看 MeoW 的**消息列表**：列表有记录说明投递成功，只是通知未弹出 |
 
 ---
@@ -677,6 +773,7 @@ git push origin v0.1.0    # 随后在 GitHub 创建 Release 并上传 .tgz
 |---|---|
 | 作者 | **骏骏爱编程** |
 | 技术支持 | **方程 chuckfang**（MeoW API 与 MeoW App） |
+| 技术支持 | **佛山七只猪科技有限公司**（Bark API 与全能消息推送 Bark） |
 
 ---
 
@@ -686,9 +783,9 @@ git push origin v0.1.0    # 随后在 GitHub 创建 Release 并上传 .tgz
 |---|---|
 | 项目反馈（插件本身的问题、建议、使用疑问） | [junjunloveprogramming@junjunloveprogramming.cn](mailto:junjunloveprogramming@junjunloveprogramming.cn) |
 | MeoW App 反馈（推送未送达、账号问题、App 功能建议） | [chuckfang@qq.com](mailto:chuckfang@qq.com) |
-| QQ 用户交流群（群号 **1051489523**） | [点击加入](https://qun.qq.com/universal-share/share?ac=1&authKey=2GwMnSDppys%2B%2FAwUgDKCcL6kV08o6VXdOlGLrTQCtHaUAakc%2FTb0nYrCRcpKQUh%2B&busi_data=eyJncm91cENvZGUiOiIxMDUxNDg5NTIzIiwidG9rZW4iOiJGRk11d1E1cVlFRU5teklhTTdIbzBCVzYyL2RORU9WNXFoNysvQ3dWRnRPQVhQVTlGbXFld1ZDRmF6Y0VlSkloIiwidWluIjoiMzEwMTUwNTU4NyJ9&data=lsWZ6DsKO3cpHWWQsuyLbIvgfrAucCFRsUxUfV6etyo2-SxHjn5W25_eg6epnhwpXLHn5fj0KS0SwXgIRHdL4w&svctype=4&tempid=h5_group_info) |
+| QQ用户沟通群（群号 **1026696694**） | [点击加入](https://qm.qq.com/q/xXDYAyFI40) |
 
-上文表格里的「点击加入」直接进群；也可以在 QQ 里搜索群号 **1051489523** 手动申请加入。
+上文表格里的「点击加入」直接进群；也可以在 QQ 里搜索群号 **1026696694** 手动申请加入。
 群里可以直接提问、反馈问题、交流用法。
 
 提交项目问题时，建议附上以下信息以便快速定位：

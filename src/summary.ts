@@ -20,6 +20,8 @@
  *   只要提供 `snapshotEvents()` 即可，便于单元测试注入假会话。
  */
 
+import { condenseAnswer, condenseQuestion } from './condense.js'
+
 /** 与 Session 对齐的最小结构（只用到快照方法） */
 export interface SessionLike {
   snapshotEvents(): readonly unknown[]
@@ -162,15 +164,19 @@ export function renderTail(toolCalls: number, tools: Map<string, number>, second
  *
  * 结构（手机锁屏上也要能一眼看懂）：
  *   【你问】…
- *   【回复】…
+ *   【摘要】…
  *   （调用 3 次工具：pwsh、read，耗时 12s）
  *
+ * 正文在渲染前会经 src/condense.ts 压缩成中文纯文本：
+ * 去掉 DSH 运行时英文上下文、Markdown/HTML/代码块，只保留结论句。
  * 拿不到对话内容时退化为纯统计文案 —— 推送**始终会发出**，只是内容简略。
  */
 export function formatSummary(summary: TurnSummary, seconds: number): string {
+  const question = condenseQuestion(summary.question, 100)
+  const answer = condenseAnswer(summary.answer, 260)
   const tail = renderTail(summary.toolCalls, summary.tools, seconds)
-  const hasQuestion = summary.question !== ''
-  const hasAnswer = summary.answer !== ''
+  const hasQuestion = question !== ''
+  const hasAnswer = answer !== ''
 
   if (!hasQuestion && !hasAnswer) {
     // 降级：没有对话内容（例如事件不可读）
@@ -180,8 +186,8 @@ export function formatSummary(summary: TurnSummary, seconds: number): string {
   }
 
   const lines: string[] = []
-  if (hasQuestion) lines.push(`【你问】${summary.question}`)
-  if (hasAnswer) lines.push(`【回复】${summary.answer}`)
+  if (hasQuestion) lines.push(`【你问】${question}`)
+  if (hasAnswer) lines.push(`【摘要】${answer}`)
   lines.push(tail)
   return lines.join('\n')
 }

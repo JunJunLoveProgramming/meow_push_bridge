@@ -70,9 +70,11 @@ export declare function renderTail(toolCalls: number, tools: Map<string, number>
  *
  * 结构（手机锁屏上也要能一眼看懂）：
  *   【你问】…
- *   【回复】…
+ *   【摘要】…
  *   （调用 3 次工具：pwsh、read，耗时 12s）
  *
+ * 正文在渲染前会经 src/condense.ts 压缩成中文纯文本：
+ * 去掉 DSH 运行时英文上下文、Markdown/HTML/代码块，只保留结论句。
  * 拿不到对话内容时退化为纯统计文案 —— 推送**始终会发出**，只是内容简略。
  */
 export declare function formatSummary(summary: TurnSummary, seconds: number): string;
